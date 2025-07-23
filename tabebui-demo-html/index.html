@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>たべぶい - 肉部位制覇アプリ</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🥩 たべぶい</a>
+            <div class="user-info">
+                <div class="level-badge" id="userLevel">Lv.1</div>
+                <span id="userName">肉好きユーザー</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ナビゲーション -->
+    <nav class="nav">
+        <a href="index.html" class="nav-link active">ダッシュボード</a>
+        <a href="parts.html" class="nav-link">部位を選ぶ</a>
+        <a href="progress.html" class="nav-link">進捗詳細</a>
+        <a href="history.html" class="nav-link">履歴</a>
+    </nav>
+
+    <div class="container">
+        <!-- 制覇率サマリー -->
+        <div class="card">
+            <h2>🏆 制覇状況</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="circular-progress" id="overallProgress">
+                        <svg>
+                            <defs>
+                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#667eea"/>
+                                    <stop offset="100%" style="stop-color:#764ba2"/>
+                                </linearGradient>
+                            </defs>
+                            <circle class="circle-bg" cx="100" cy="100" r="90"></circle>
+                            <circle class="circle-progress" cx="100" cy="100" r="90"></circle>
+                        </svg>
+                        <div class="progress-text" id="overallPercentage">0%</div>
+                    </div>
+                    <div class="stat-label">全体制覇率</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEaten">0</div>
+                    <div class="stat-label">食べた部位数</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-value" id="currentLevel">1</div>
+                    <div class="stat-label">現在のレベル</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRecords">0</div>
+                    <div class="stat-label">総記録数</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 動物別進捗 -->
+        <div class="card">
+            <h2>🐄🐷🐔 動物別制覇状況</h2>
+            <div id="animalProgress">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+
+        <!-- 動物選択 -->
+        <div class="card">
+            <h2>📝 部位を記録する</h2>
+            <div class="animals-grid" id="animalsGrid">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+
+        <!-- クイックアクション -->
+        <div class="card">
+            <h2>⚡ クイックアクション</h2>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                <a href="parts.html" class="btn btn-primary">部位を選んで記録</a>
+                <a href="progress.html" class="btn btn-outline">詳細な進捗を見る</a>
+                <a href="history.html" class="btn btn-outline">食事履歴を見る</a>
+            </div>
+        </div>
+
+        <!-- 最近の記録 -->
+        <div class="card">
+            <h2>📚 最近の記録</h2>
+            <div id="recentRecords">
+                <p style="text-align: center; color: #666; padding: 20px;">
+                    まだ記録がありません。<br>
+                    <a href="parts.html" style="color: #764ba2;">部位を選んで記録</a>してみましょう！
+                </p>
+            </div>
+        </div>
+
+        <!-- 今日のチャレンジ -->
+        <div class="card">
+            <h2>🎯 今日のチャレンジ</h2>
+            <div id="dailyChallenge">
+                <div style="padding: 20px; text-align: center;">
+                    <div style="font-size: 1.2em; margin-bottom: 10px;">新しい部位に挑戦しよう！</div>
+                    <div style="color: #666;">まだ食べたことのない部位を1つ記録してみましょう</div>
+                    <div style="margin-top: 15px;">
+                        <div class="progress-bar">
+                            <div class="progress-fill progress-beef" style="width: 0%" id="challengeProgress"></div>
+                        </div>
+                        <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                            進捗: <span id="challengeText">0/1</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- バッジ表示 -->
+        <div class="card">
+            <h2>🏅 獲得バッジ</h2>
+            <div id="badgesContainer">
+                <div style="text-align: center; padding: 20px; color: #666;">
+                    部位を記録してバッジを獲得しよう！
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 記録作成モーダル -->
+    <div class="modal" id="recordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">部位を記録</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalBody">
+                <form id="recordForm">
+                    <div class="form-group">
+                        <label class="form-label">部位</label>
+                        <div id="selectedPart" style="padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+                            <!-- 選択された部位情報 -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="eatenDate">食べた日</label>
+                        <input type="date" id="eatenDate" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="memo">メモ・感想</label>
+                        <textarea id="memo" class="form-control" placeholder="味や食感、お店の情報など..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="rating">満足度</label>
+                        <div id="rating" style="text-align: center; padding: 10px;">
+                            <span class="star" data-rating="1">⭐</span>
+                            <span class="star" data-rating="2">⭐</span>
+                            <span class="star" data-rating="3">⭐</span>
+                            <span class="star" data-rating="4">⭐</span>
+                            <span class="star" data-rating="5">⭐</span>
+                        </div>
+                        <input type="hidden" id="ratingValue" value="5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="restaurant">お店（任意）</label>
+                        <input type="text" id="restaurant" class="form-control" placeholder="お店の名前">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 25px;">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">記録する</button>
+                        <button type="button" class="btn btn-outline" onclick="closeModal()">キャンセル</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- レベルアップ通知モーダル -->
+    <div class="modal" id="levelUpModal">
+        <div class="modal-content" style="text-align: center;">
+            <div class="modal-header">
+                <h3 class="modal-title">🎉 レベルアップ！</h3>
+                <button class="close-btn" onclick="closeLevelUpModal()">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="font-size: 3em; margin-bottom: 20px;">🎊</div>
+                <div style="font-size: 1.5em; margin-bottom: 10px;">レベル <span id="newLevel">2</span> になりました！</div>
+                <div style="color: #666; margin-bottom: 20px;">おめでとうございます！</div>
+                <button class="btn btn-primary" onclick="closeLevelUpModal()">続ける</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/parts.js"></script>
+    <script src="js/records.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            updateAllProgress();
+            
+            // 今日の日付をデフォルトに設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('eatenDate').value = today;
+            
+            // 星評価のイベントリスナー
+            setupRatingStars();
+        });
+
+        // ダッシュボード初期化
+        function initializeDashboard() {
+            const stats = getOverallStats();
+            const userLevel = getUserLevel();
+            const userExp = getUserExperience();
+            
+            // ユーザー情報更新
+            document.getElementById('userLevel').textContent = `Lv.${userLevel}`;
+            document.getElementById('currentLevel').textContent = userLevel;
+            
+            // 統計情報更新
+            document.getElementById('totalEaten').textContent = stats.eaten;
+            document.getElementById('totalRecords').textContent = getRecords().length;
+            
+            // 動物グリッド生成
+            generateAnimalsGrid();
+            
+            // 動物別進捗表示
+            displayAnimalProgress();
+            
+            // 最近の記録表示
+            displayRecentRecords();
+            
+            // バッジ表示
+            displayBadges();
+            
+            // チャレンジ更新
+            updateDailyChallenge();
+        }
+
+        // 動物選択グリッド生成
+        function generateAnimalsGrid() {
+            const container = document.getElementById('animalsGrid');
+            const animals = ['beef', 'pork', 'chicken'];
+            
+            container.innerHTML = '';
+            
+            animals.forEach(animalType => {
+                const info = getAnimalInfo(animalType);
+                const stats = getAnimalStats(animalType);
+                
+                const card = document.createElement('div');
+                card.className = 'animal-card';
+                card.onclick = () => window.location.href = `parts.html?animal=${animalType}`;
+                
+                card.innerHTML = `
+                    <div class="animal-icon">${info.icon}</div>
+                    <div class="animal-name">${info.name}</div>
+                    <div class="animal-stats">
+                        ${stats.eaten}/${stats.total} 部位
+                        <div style="margin-top: 8px;">
+                            <div class="progress-bar">
+                                <div class="progress-fill progress-${animalType}" style="width: ${stats.completionRate}%"></div>
+                            </div>
+                            <small>${stats.completionRate}%</small>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // 動物別進捗表示
+        function displayAnimalProgress() {
+            const container = document.getElementById('animalProgress');
+            const animals = ['beef', 'pork', 'chicken'];
+            
+            container.innerHTML = '';
+            
+            animals.forEach(animalType => {
+                const info = getAnimalInfo(animalType);
+                const stats = getAnimalStats(animalType);
+                
+                const progressDiv = document.createElement('div');
+                progressDiv.className = 'progress-container';
+                progressDiv.innerHTML = `
+                    <div class="progress-label">
+                        <span>${info.icon} ${info.name}</span>
+                        <span>${stats.eaten}/${stats.total} (${stats.completionRate}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-${animalType}" style="width: ${stats.completionRate}%"></div>
+                    </div>
+                `;
+                
+                container.appendChild(progressDiv);
+            });
+        }
+
+        // 全体進捗更新
+        function updateAllProgress() {
+            const stats = getOverallStats();
+            const percentage = stats.completionRate;
+            
+            // 円形進捗更新
+            const circle = document.querySelector('.circle-progress');
+            const text = document.getElementById('overallPercentage');
+            
+            if (circle && text) {
+                const circumference = 2 * Math.PI * 90; // r=90
+                const offset = circumference - (percentage / 100) * circumference;
+                circle.style.strokeDashoffset = offset;
+                text.textContent = `${percentage}%`;
+            }
+        }
+
+        // 最近の記録表示
+        function displayRecentRecords() {
+            const container = document.getElementById('recentRecords');
+            const records = getRecords().slice(-3).reverse(); // 最新3件
+            
+            if (records.length === 0) {
+                container.innerHTML = `
+                    <p style="text-align: center; color: #666; padding: 20px;">
+                        まだ記録がありません。<br>
+                        <a href="parts.html" style="color: #764ba2;">部位を選んで記録</a>してみましょう！
+                    </p>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            records.forEach(record => {
+                const part = getPartById(record.partId);
+                if (!part) return;
+                
+                const recordDiv = document.createElement('div');
+                recordDiv.style.cssText = 'padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;';
+                
+                recordDiv.innerHTML = `
+                    <div>
+                        <strong>${part.name}</strong> (${getAnimalInfo(part.animalType).name})
+                        ${record.memo ? `<br><small style="color: #666;">${record.memo.substring(0, 50)}${record.memo.length > 50 ? '...' : ''}</small>` : ''}
+                    </div>
+                    <div style="text-align: right; color: #666; font-size: 0.9em;">
+                        ${new Date(record.date).toLocaleDateString('ja-JP')}
+                        ${record.rating ? '<br>' + '⭐'.repeat(record.rating) : ''}
+                    </div>
+                `;
+                
+                container.appendChild(recordDiv);
+            });
+        }
+
+        // バッジ表示
+        function displayBadges() {
+            const container = document.getElementById('badgesContainer');
+            const badges = getUserBadges();
+            
+            if (badges.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">部位を記録してバッジを獲得しよう！</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            badges.forEach(badge => {
+                const badgeElement = document.createElement('span');
+                badgeElement.className = 'badge earned';
+                badgeElement.textContent = badge;
+                badgeElement.title = badge;
+                container.appendChild(badgeElement);
+            });
+        }
+
+        // チャレンジ更新
+        function updateDailyChallenge() {
+            const records = getRecords();
+            const today = new Date().toDateString();
+            const todayRecords = records.filter(record => 
+                new Date(record.date).toDateString() === today
+            );
+            
+            const progress = Math.min(todayRecords.length, 1);
+            const progressBar = document.getElementById('challengeProgress');
+            const progressText = document.getElementById('challengeText');
+            
+            if (progressBar) {
+                progressBar.style.width = `${progress * 100}%`;
+            }
+            
+            if (progressText) {
+                progressText.textContent = `${progress}/1`;
+            }
+        }
+
+        // 星評価設定
+        function setupRatingStars() {
+            const stars = document.querySelectorAll('.star');
+            const ratingInput = document.getElementById('ratingValue');
+            
+            stars.forEach((star, index) => {
+                star.style.cursor = 'pointer';
+                star.style.fontSize = '1.5em';
+                star.style.margin = '0 2px';
+                star.style.opacity = '0.3';
+                
+                star.addEventListener('click', () => {
+                    const rating = parseInt(star.dataset.rating);
+                    ratingInput.value = rating;
+                    
+                    // 星の表示更新
+                    stars.forEach((s, i) => {
+                        s.style.opacity = i < rating ? '1' : '0.3';
+                    });
+                });
+                
+                star.addEventListener('mouseover', () => {
+                    const rating = parseInt(star.dataset.rating);
+                    stars.forEach((s, i) => {
+                        s.style.opacity = i < rating ? '1' : '0.3';
+                    });
+                });
+            });
+            
+            // 初期状態（5つ星）
+            stars.forEach(star => star.style.opacity = '1');
+        }
+
+        // モーダル関連
+        function closeModal() {
+            document.getElementById('recordModal').classList.remove('active');
+        }
+
+        function closeLevelUpModal() {
+            document.getElementById('levelUpModal').classList.remove('active');
+        }
+
+        // レコード送信
+        document.getElementById('recordForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                partId: this.dataset.partId,
+                date: document.getElementById('eatenDate').value,
+                memo: document.getElementById('memo').value,
+                rating: parseInt(document.getElementById('ratingValue').value),
+                restaurant: document.getElementById('restaurant').value
+            };
+            
+            // 記録保存
+            const isNewRecord = addRecord(formData);
+            
+            if (isNewRecord) {
+                // レベルアップチェック
+                const oldLevel = getUserLevel();
+                updateUserExperience(10); // 新部位で10XP獲得
+                const newLevel = getUserLevel();
+                
+                if (newLevel > oldLevel) {
+                    // レベルアップ通知
+                    document.getElementById('newLevel').textContent = newLevel;
+                    document.getElementById('levelUpModal').classList.add('active');
+                }
+                
+                // バッジチェック
+                checkAndAwardBadges();
+            }
+            
+            // 画面更新
+            initializeDashboard();
+            updateAllProgress();
+            closeModal();
+        });
+    </script>
+</body>
+</html>

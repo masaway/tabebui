@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>進捗詳細 - たべぶい</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🥩 たべぶい</a>
+            <div class="user-info">
+                <div class="level-badge" id="userLevel">Lv.1</div>
+                <span id="userName">肉好きユーザー</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ナビゲーション -->
+    <nav class="nav">
+        <a href="index.html" class="nav-link">ダッシュボード</a>
+        <a href="parts.html" class="nav-link">部位を選ぶ</a>
+        <a href="progress.html" class="nav-link active">進捗詳細</a>
+        <a href="history.html" class="nav-link">履歴</a>
+    </nav>
+
+    <div class="container">
+        <!-- 全体制覇率 -->
+        <div class="card">
+            <h2>🏆 全体制覇状況</h2>
+            <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
+                <div class="circular-progress" id="overallProgress" style="width: 150px; height: 150px;">
+                    <svg>
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#667eea"/>
+                                <stop offset="100%" style="stop-color:#764ba2"/>
+                            </linearGradient>
+                        </defs>
+                        <circle class="circle-bg" cx="75" cy="75" r="65"></circle>
+                        <circle class="circle-progress" cx="75" cy="75" r="65"></circle>
+                    </svg>
+                    <div class="progress-text" id="overallPercentage" style="font-size: 1.8em;">0%</div>
+                </div>
+                <div style="flex: 1;">
+                    <div id="overallStats">
+                        <!-- 動的に生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- レベル・経験値 -->
+        <div class="card">
+            <h2>⭐ レベル・経験値</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div class="stat-card">
+                    <div class="stat-value" id="currentLevel">1</div>
+                    <div class="stat-label">現在のレベル</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="currentExp">0</div>
+                    <div class="stat-label">現在の経験値</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="expToNext">100</div>
+                    <div class="stat-label">次のレベルまで</div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <div class="progress-label">
+                    <span>レベル進捗</span>
+                    <span id="levelProgressText">0/100</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="levelProgressBar" style="background: linear-gradient(90deg, #ff9a56, #ff7a00); width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 動物別詳細進捗 -->
+        <div class="card">
+            <h2>🐄🐷🐔 動物別制覇詳細</h2>
+            <div id="animalDetailsContainer">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+
+        <!-- 統計情報 -->
+        <div class="card">
+            <h2>📊 統計情報</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRecords">0</div>
+                    <div class="stat-label">総記録数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="thisMonthRecords">0</div>
+                    <div class="stat-label">今月の記録</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="streakDays">0</div>
+                    <div class="stat-label">連続記録日数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="averageRating">0.0</div>
+                    <div class="stat-label">平均満足度</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="uniqueRestaurants">0</div>
+                    <div class="stat-label">訪問店舗数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="firstRecordDate">-</div>
+                    <div class="stat-label">初回記録日</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- バッジコレクション -->
+        <div class="card">
+            <h2>🏅 バッジコレクション</h2>
+            <div id="badgesContainer">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+
+        <!-- 月別記録グラフ -->
+        <div class="card">
+            <h2>📈 月別記録推移</h2>
+            <div id="monthlyChart" style="margin-top: 20px;">
+                <!-- 簡易グラフ表示 -->
+            </div>
+        </div>
+
+        <!-- 希少度別制覇状況 -->
+        <div class="card">
+            <h2>⭐ 希少度別制覇状況</h2>
+            <div id="rarityProgress">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+
+        <!-- データ管理 -->
+        <div class="card">
+            <h2>💾 データ管理</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                <button class="btn btn-outline" onclick="exportUserData()">データエクスポート</button>
+                <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">データインポート</button>
+                <button class="btn" onclick="loadSampleData()" style="background: #f39c12; color: white;">サンプルデータ追加</button>
+                <button class="btn" onclick="resetAllData()" style="background: #e74c3c; color: white;">全データリセット</button>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="handleImportFile(this.files[0])">
+        </div>
+    </div>
+
+    <script src="js/parts.js"></script>
+    <script src="js/records.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeProgressPage();
+        });
+
+        // 進捗ページ初期化
+        function initializeProgressPage() {
+            const userLevel = getUserLevel();
+            document.getElementById('userLevel').textContent = `Lv.${userLevel}`;
+            
+            updateOverallProgress();
+            updateLevelProgress();
+            updateAnimalDetails();
+            updateStatistics();
+            updateBadges();
+            updateMonthlyChart();
+            updateRarityProgress();
+        }
+
+        // 全体進捗更新
+        function updateOverallProgress() {
+            const stats = getOverallStats();
+            const percentage = stats.completionRate;
+            
+            // 円形進捗更新
+            const circle = document.querySelector('.circle-progress');
+            const text = document.getElementById('overallPercentage');
+            
+            if (circle && text) {
+                const circumference = 2 * Math.PI * 65; // r=65
+                const offset = circumference - (percentage / 100) * circumference;
+                circle.style.strokeDasharray = circumference;
+                circle.style.strokeDashoffset = offset;
+                text.textContent = `${percentage}%`;
+            }
+            
+            // 統計情報更新
+            document.getElementById('overallStats').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 1.1em;">
+                    <div><strong>制覇済み部位:</strong> ${stats.eaten}/${stats.total}</div>
+                    <div><strong>残り部位:</strong> ${stats.remaining}</div>
+                    <div><strong>牛:</strong> ${stats.animals.beef.eaten}/${stats.animals.beef.total} (${stats.animals.beef.completionRate}%)</div>
+                    <div><strong>豚:</strong> ${stats.animals.pork.eaten}/${stats.animals.pork.total} (${stats.animals.pork.completionRate}%)</div>
+                    <div><strong>鳥:</strong> ${stats.animals.chicken.eaten}/${stats.animals.chicken.total} (${stats.animals.chicken.completionRate}%)</div>
+                    <div><strong>制覇動物:</strong> ${Object.values(stats.animals).filter(a => a.completionRate === 100).length}/3</div>
+                </div>
+            `;
+        }
+
+        // レベル進捗更新
+        function updateLevelProgress() {
+            const level = getUserLevel();
+            const exp = getUserExperience();
+            const expToNext = getExpToNextLevel();
+            const levelProgress = getCurrentLevelProgress();
+            
+            document.getElementById('currentLevel').textContent = level;
+            document.getElementById('currentExp').textContent = formatNumber(exp);
+            document.getElementById('expToNext').textContent = formatNumber(expToNext);
+            document.getElementById('levelProgressText').textContent = `${levelProgress}/100`;
+            document.getElementById('levelProgressBar').style.width = `${levelProgress}%`;
+        }
+
+        // 動物別詳細更新
+        function updateAnimalDetails() {
+            const container = document.getElementById('animalDetailsContainer');
+            const animals = ['beef', 'pork', 'chicken'];
+            
+            container.innerHTML = '';
+            
+            animals.forEach(animalType => {
+                const info = getAnimalInfo(animalType);
+                const stats = getAnimalStats(animalType);
+                const parts = getPartsByAnimal(animalType);
+                const eatenParts = getEatenParts();
+                
+                const animalDiv = document.createElement('div');
+                animalDiv.style.cssText = 'margin-bottom: 30px; padding: 20px; border: 2px solid #f0f0f0; border-radius: 10px;';
+                
+                // 食べた部位と未食部位を分類
+                const eatenAnimalParts = parts.filter(part => eatenParts.includes(part.id));
+                const uneatennimalParts = parts.filter(part => !eatenParts.includes(part.id));
+                
+                animalDiv.innerHTML = `
+                    <h3 style="margin-bottom: 15px; color: ${info.color};">
+                        ${info.icon} ${info.name} 
+                        <span style="font-size: 0.8em; color: #666;">(${stats.eaten}/${stats.total} - ${stats.completionRate}%)</span>
+                    </h3>
+                    
+                    <div class="progress-bar" style="margin-bottom: 20px;">
+                        <div class="progress-fill progress-${animalType}" style="width: ${stats.completionRate}%"></div>
+                    </div>
+                    
+                    ${stats.completionRate === 100 ? 
+                        '<div style="text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; color: #155724; margin-bottom: 15px;">🎉 制覇完了！おめでとうございます！</div>' : ''
+                    }
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h4 style="color: #28a745; margin-bottom: 10px;">✅ 制覇済み (${eatenAnimalParts.length})</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                                ${eatenAnimalParts.map(part => 
+                                    `<span class="badge earned" title="${part.description}">${part.name}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color: #6c757d; margin-bottom: 10px;">❌ 未制覇 (${uneatennimalParts.length})</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                                ${uneatennimalParts.map(part => 
+                                    `<span class="badge not-earned" title="${part.description}">${part.name}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(animalDiv);
+            });
+        }
+
+        // 統計情報更新
+        function updateStatistics() {
+            const records = getRecords();
+            const thisMonthRecords = getThisMonthRecords();
+            const streakDays = getStreakDays();
+            
+            // 平均満足度
+            const avgRating = records.length > 0 ? 
+                records.reduce((sum, r) => sum + r.rating, 0) / records.length : 0;
+            
+            // ユニークなレストラン数
+            const uniqueRestaurants = new Set(
+                records.filter(r => r.restaurant).map(r => r.restaurant)
+            ).size;
+            
+            // 初回記録日
+            const firstRecord = records.sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+            const firstRecordDate = firstRecord ? formatDate(firstRecord.date) : '-';
+            
+            document.getElementById('totalRecords').textContent = formatNumber(records.length);
+            document.getElementById('thisMonthRecords').textContent = formatNumber(thisMonthRecords.length);
+            document.getElementById('streakDays').textContent = formatNumber(streakDays);
+            document.getElementById('averageRating').textContent = avgRating.toFixed(1);
+            document.getElementById('uniqueRestaurants').textContent = formatNumber(uniqueRestaurants);
+            document.getElementById('firstRecordDate').textContent = firstRecordDate;
+        }
+
+        // バッジ更新
+        function updateBadges() {
+            const container = document.getElementById('badgesContainer');
+            const userBadges = getUserBadges();
+            const allBadges = Object.keys(BADGES);
+            
+            container.innerHTML = '';
+            
+            if (allBadges.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">バッジを獲得しよう！</div>';
+                return;
+            }
+            
+            // 獲得済みバッジ
+            if (userBadges.length > 0) {
+                const earnedSection = document.createElement('div');
+                earnedSection.innerHTML = `
+                    <h4 style="color: #28a745; margin-bottom: 15px;">🏆 獲得済み (${userBadges.length})</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 25px;">
+                        ${userBadges.map(badge => 
+                            `<span class="badge earned" title="${BADGES[badge]?.description || ''}">${badge}</span>`
+                        ).join('')}
+                    </div>
+                `;
+                container.appendChild(earnedSection);
+            }
+            
+            // 未獲得バッジ
+            const unearned = allBadges.filter(badge => !userBadges.includes(badge));
+            if (unearned.length > 0) {
+                const unearnedSection = document.createElement('div');
+                unearnedSection.innerHTML = `
+                    <h4 style="color: #6c757d; margin-bottom: 15px;">🔒 未獲得 (${unearned.length})</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${unearned.map(badge => 
+                            `<span class="badge not-earned" title="${BADGES[badge]?.description || ''}">${badge}</span>`
+                        ).join('')}
+                    </div>
+                `;
+                container.appendChild(unearnedSection);
+            }
+        }
+
+        // 月別グラフ更新
+        function updateMonthlyChart() {
+            const container = document.getElementById('monthlyChart');
+            const records = getRecords();
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">記録がありません</div>';
+                return;
+            }
+            
+            // 過去6ヶ月のデータを集計
+            const monthlyData = {};
+            const now = new Date();
+            
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                monthlyData[key] = 0;
+            }
+            
+            records.forEach(record => {
+                const date = new Date(record.date);
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (monthlyData.hasOwnProperty(key)) {
+                    monthlyData[key]++;
+                }
+            });
+            
+            const maxCount = Math.max(...Object.values(monthlyData), 1);
+            
+            container.innerHTML = `
+                <div style="display: flex; align-items: end; gap: 10px; height: 150px; padding: 20px 0;">
+                    ${Object.entries(monthlyData).map(([month, count]) => {
+                        const height = (count / maxCount) * 100;
+                        return `
+                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                                <div style="background: linear-gradient(to top, #667eea, #764ba2); width: 100%; height: ${height}%; min-height: 5px; border-radius: 4px 4px 0 0; margin-bottom: 8px; position: relative;">
+                                    <div style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 0.8em; font-weight: bold; color: #333;">${count}</div>
+                                </div>
+                                <div style="font-size: 0.8em; color: #666; writing-mode: vertical-rl; text-orientation: mixed;">
+                                    ${month.split('-')[1]}月
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        // 希少度別進捗更新
+        function updateRarityProgress() {
+            const container = document.getElementById('rarityProgress');
+            const eatenParts = getEatenParts();
+            const allParts = getAllParts();
+            
+            const rarityStats = {
+                common: { eaten: 0, total: 0 },
+                uncommon: { eaten: 0, total: 0 },
+                rare: { eaten: 0, total: 0 },
+                legendary: { eaten: 0, total: 0 }
+            };
+            
+            allParts.forEach(part => {
+                rarityStats[part.rarity].total++;
+                if (eatenParts.includes(part.id)) {
+                    rarityStats[part.rarity].eaten++;
+                }
+            });
+            
+            container.innerHTML = Object.entries(rarityStats).map(([rarity, stats]) => {
+                const rarityInfo = getRarityInfo(rarity);
+                const percentage = stats.total > 0 ? Math.round((stats.eaten / stats.total) * 100) : 0;
+                
+                return `
+                    <div class="progress-container" style="margin-bottom: 15px;">
+                        <div class="progress-label">
+                            <span style="color: ${rarityInfo.color};">
+                                ${getRarityStars(rarity)} ${rarityInfo.label}
+                            </span>
+                            <span>${stats.eaten}/${stats.total} (${percentage}%)</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="background-color: ${rarityInfo.color}; width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // データエクスポート
+        function exportUserData() {
+            exportData();
+        }
+
+        // データインポート
+        function handleImportFile(file) {
+            if (file) {
+                importData(file);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部位選択 - たべぶい</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🥩 たべぶい</a>
+            <div class="user-info">
+                <div class="level-badge" id="userLevel">Lv.1</div>
+                <span id="userName">肉好きユーザー</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ナビゲーション -->
+    <nav class="nav">
+        <a href="index.html" class="nav-link">ダッシュボード</a>
+        <a href="parts.html" class="nav-link active">部位を選ぶ</a>
+        <a href="progress.html" class="nav-link">進捗詳細</a>
+        <a href="history.html" class="nav-link">履歴</a>
+    </nav>
+
+    <div class="container">
+        <!-- 動物選択 -->
+        <div class="card" id="animalSelection">
+            <h2>🐄🐷🐔 動物を選択</h2>
+            <div class="animals-grid" id="animalsGrid">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+
+        <!-- 部位選択 -->
+        <div class="card" id="partsSelection" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="animalTitle">部位を選択</h2>
+                <button class="btn btn-outline" onclick="showAnimalSelection()">動物選択に戻る</button>
+            </div>
+
+            <!-- フィルター -->
+            <div style="margin-bottom: 20px; text-align: center;">
+                <button class="btn btn-outline filter-btn active" data-filter="all">すべて</button>
+                <button class="btn btn-outline filter-btn" data-filter="eaten">食べた</button>
+                <button class="btn btn-outline filter-btn" data-filter="not-eaten">未食</button>
+            </div>
+
+            <!-- 進捗表示 -->
+            <div id="animalProgressContainer" class="progress-container" style="margin-bottom: 25px;">
+                <!-- 動的に生成 -->
+            </div>
+
+            <!-- 部位グリッド -->
+            <div class="parts-grid" id="partsGrid">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 部位詳細モーダル -->
+    <div class="modal" id="partDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="partName">部位詳細</h3>
+                <button class="close-btn" onclick="closePartDetailModal()">&times;</button>
+            </div>
+            <div id="partDetailBody">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 記録作成モーダル -->
+    <div class="modal" id="recordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">部位を記録</h3>
+                <button class="close-btn" onclick="closeRecordModal()">&times;</button>
+            </div>
+            <div id="modalBody">
+                <form id="recordForm">
+                    <div class="form-group">
+                        <label class="form-label">部位</label>
+                        <div id="selectedPartInfo" style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+                            <!-- 選択された部位情報 -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="eatenDate">食べた日</label>
+                        <input type="date" id="eatenDate" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="memo">メモ・感想</label>
+                        <textarea id="memo" class="form-control" placeholder="味や食感、お店の情報など..." rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">満足度</label>
+                        <div id="ratingStars" style="text-align: center; padding: 10px;">
+                            <span class="star" data-rating="1">⭐</span>
+                            <span class="star" data-rating="2">⭐</span>
+                            <span class="star" data-rating="3">⭐</span>
+                            <span class="star" data-rating="4">⭐</span>
+                            <span class="star" data-rating="5">⭐</span>
+                        </div>
+                        <input type="hidden" id="ratingValue" value="5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="restaurant">お店（任意）</label>
+                        <input type="text" id="restaurant" class="form-control" placeholder="お店の名前">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 25px;">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">記録する</button>
+                        <button type="button" class="btn btn-outline" onclick="closeRecordModal()">キャンセル</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- レベルアップ通知モーダル -->
+    <div class="modal" id="levelUpModal">
+        <div class="modal-content" style="text-align: center;">
+            <div class="modal-header">
+                <h3 class="modal-title">🎉 レベルアップ！</h3>
+                <button class="close-btn" onclick="closeLevelUpModal()">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="font-size: 3em; margin-bottom: 20px;">🎊</div>
+                <div style="font-size: 1.5em; margin-bottom: 10px;">レベル <span id="newLevel">2</span> になりました！</div>
+                <div style="color: #666; margin-bottom: 20px;">おめでとうございます！</div>
+                <button class="btn btn-primary" onclick="closeLevelUpModal()">続ける</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- バッジ獲得通知モーダル -->
+    <div class="modal" id="badgeModal">
+        <div class="modal-content" style="text-align: center;">
+            <div class="modal-header">
+                <h3 class="modal-title">🏅 バッジ獲得！</h3>
+                <button class="close-btn" onclick="closeBadgeModal()">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="font-size: 3em; margin-bottom: 20px;">🎖️</div>
+                <div style="font-size: 1.3em; margin-bottom: 10px;">「<span id="badgeName">新しいバッジ</span>」を獲得しました！</div>
+                <div style="color: #666; margin-bottom: 20px;">素晴らしい！</div>
+                <button class="btn btn-primary" onclick="closeBadgeModal()">続ける</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/parts.js"></script>
+    <script src="js/records.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        let currentAnimal = null;
+        let currentFilter = 'all';
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+            
+            // URLパラメータから動物を取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const animal = urlParams.get('animal');
+            
+            if (animal && ['beef', 'pork', 'chicken'].includes(animal)) {
+                showPartsSelection(animal);
+            } else {
+                showAnimalSelection();
+            }
+            
+            // 今日の日付をデフォルトに設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('eatenDate').value = today;
+            
+            // イベントリスナー設定
+            setupEventListeners();
+        });
+
+        // ページ初期化
+        function initializePage() {
+            const userLevel = getUserLevel();
+            document.getElementById('userLevel').textContent = `Lv.${userLevel}`;
+            
+            generateAnimalsGrid();
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            // フィルターボタン
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    filterParts();
+                });
+            });
+
+            // 星評価
+            setupRatingStars();
+            
+            // フォーム送信
+            document.getElementById('recordForm').addEventListener('submit', handleRecordSubmit);
+        }
+
+        // 動物選択グリッド生成
+        function generateAnimalsGrid() {
+            const container = document.getElementById('animalsGrid');
+            const animals = ['beef', 'pork', 'chicken'];
+            
+            container.innerHTML = '';
+            
+            animals.forEach(animalType => {
+                const info = getAnimalInfo(animalType);
+                const stats = getAnimalStats(animalType);
+                
+                const card = document.createElement('div');
+                card.className = 'animal-card';
+                card.onclick = () => showPartsSelection(animalType);
+                
+                card.innerHTML = `
+                    <div class="animal-icon">${info.icon}</div>
+                    <div class="animal-name">${info.name}</div>
+                    <div class="animal-stats">
+                        ${stats.eaten}/${stats.total} 部位
+                        <div style="margin-top: 10px;">
+                            <div class="progress-bar">
+                                <div class="progress-fill progress-${animalType}" style="width: ${stats.completionRate}%"></div>
+                            </div>
+                            <small style="color: #666;">${stats.completionRate}% 制覇</small>
+                        </div>
+                        <div style="margin-top: 8px; color: #666; font-size: 0.9em;">
+                            残り${stats.remaining}部位
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // 動物選択画面表示
+        function showAnimalSelection() {
+            document.getElementById('animalSelection').style.display = 'block';
+            document.getElementById('partsSelection').style.display = 'none';
+            currentAnimal = null;
+            
+            // URLを更新
+            history.pushState({}, '', 'parts.html');
+        }
+
+        // 部位選択画面表示
+        function showPartsSelection(animalType) {
+            currentAnimal = animalType;
+            const info = getAnimalInfo(animalType);
+            const stats = getAnimalStats(animalType);
+            
+            // タイトル更新
+            document.getElementById('animalTitle').innerHTML = `${info.icon} ${info.name}の部位を選択`;
+            
+            // 進捗表示更新
+            const progressContainer = document.getElementById('animalProgressContainer');
+            progressContainer.innerHTML = `
+                <div class="progress-label">
+                    <span>${info.name}の制覇率</span>
+                    <span>${stats.eaten}/${stats.total} (${stats.completionRate}%)</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-${animalType}" style="width: ${stats.completionRate}%"></div>
+                </div>
+            `;
+            
+            // 部位グリッド生成
+            generatePartsGrid(animalType);
+            
+            // 画面切り替え
+            document.getElementById('animalSelection').style.display = 'none';
+            document.getElementById('partsSelection').style.display = 'block';
+            
+            // URLを更新
+            history.pushState({}, '', `parts.html?animal=${animalType}`);
+        }
+
+        // 部位グリッド生成
+        function generatePartsGrid(animalType) {
+            const container = document.getElementById('partsGrid');
+            const parts = getPartsByAnimal(animalType);
+            const eatenParts = getEatenParts();
+            
+            container.innerHTML = '';
+            
+            parts.forEach(part => {
+                const isEaten = eatenParts.includes(part.id);
+                
+                const card = document.createElement('div');
+                card.className = `part-card ${isEaten ? 'eaten' : 'not-eaten'}`;
+                card.dataset.partId = part.id;
+                card.dataset.status = isEaten ? 'eaten' : 'not-eaten';
+                
+                card.innerHTML = `
+                    <div class="part-name">${part.name}</div>
+                    <div class="part-kana">${part.nameKana}</div>
+                    <div class="rarity-stars">${getRarityStars(part.rarity)}</div>
+                    ${isEaten ? '<div style="margin-top: 5px; font-size: 0.8em;">✅ 制覇済み</div>' : ''}
+                `;
+                
+                // クリックイベント
+                card.addEventListener('click', () => {
+                    showPartDetail(part);
+                });
+                
+                container.appendChild(card);
+            });
+            
+            // 初期フィルター適用
+            filterParts();
+        }
+
+        // 部位フィルター
+        function filterParts() {
+            const cards = document.querySelectorAll('.part-card');
+            
+            cards.forEach(card => {
+                const status = card.dataset.status;
+                
+                switch (currentFilter) {
+                    case 'eaten':
+                        card.style.display = status === 'eaten' ? 'flex' : 'none';
+                        break;
+                    case 'not-eaten':
+                        card.style.display = status === 'not-eaten' ? 'flex' : 'none';
+                        break;
+                    default:
+                        card.style.display = 'flex';
+                }
+            });
+        }
+
+        // 部位詳細表示
+        function showPartDetail(part) {
+            const isEaten = isPartEaten(part.id);
+            const rarityInfo = getRarityInfo(part.rarity);
+            const animalInfo = getAnimalInfo(part.animalType);
+            
+            document.getElementById('partName').textContent = part.name;
+            
+            document.getElementById('partDetailBody').innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 3em; margin-bottom: 10px;">${animalInfo.icon}</div>
+                    <div style="font-size: 1.2em; color: #666; margin-bottom: 5px;">${part.nameKana}</div>
+                    <div style="color: ${rarityInfo.color}; font-weight: bold;">
+                        ${getRarityStars(part.rarity)} ${rarityInfo.label}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4>説明</h4>
+                    <p style="color: #666; line-height: 1.6;">${part.description}</p>
+                </div>
+                
+                ${isEaten ? 
+                    `<div style="text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; color: #155724; margin-bottom: 20px;">
+                        ✅ この部位は制覇済みです！
+                    </div>` : ''
+                }
+                
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-success" style="flex: 1;" onclick="openRecordModal('${part.id}')">
+                        ${isEaten ? '再度記録する' : '記録する'}
+                    </button>
+                    <button class="btn btn-outline" onclick="closePartDetailModal()">閉じる</button>
+                </div>
+            `;
+            
+            document.getElementById('partDetailModal').classList.add('active');
+        }
+
+        // 記録モーダルを開く
+        function openRecordModal(partId) {
+            const part = getPartById(partId);
+            const animalInfo = getAnimalInfo(part.animalType);
+            const rarityInfo = getRarityInfo(part.rarity);
+            
+            // 選択された部位情報を表示
+            document.getElementById('selectedPartInfo').innerHTML = `
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 2em;">${animalInfo.icon}</div>
+                    <div>
+                        <div style="font-size: 1.2em; font-weight: bold;">${part.name}</div>
+                        <div style="color: #666;">${part.nameKana}</div>
+                        <div style="color: ${rarityInfo.color}; font-size: 0.9em;">
+                            ${getRarityStars(part.rarity)} ${rarityInfo.label}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // フォームにpartIdを設定
+            document.getElementById('recordForm').dataset.partId = partId;
+            
+            // モーダル表示
+            closePartDetailModal();
+            document.getElementById('recordModal').classList.add('active');
+        }
+
+        // 星評価設定
+        function setupRatingStars() {
+            const stars = document.querySelectorAll('.star');
+            const ratingInput = document.getElementById('ratingValue');
+            
+            stars.forEach((star, index) => {
+                star.style.cursor = 'pointer';
+                star.style.fontSize = '1.5em';
+                star.style.margin = '0 2px';
+                star.style.opacity = '1'; // 初期状態は全て点灯
+                
+                star.addEventListener('click', () => {
+                    const rating = parseInt(star.dataset.rating);
+                    ratingInput.value = rating;
+                    updateStarDisplay(rating);
+                });
+                
+                star.addEventListener('mouseover', () => {
+                    const rating = parseInt(star.dataset.rating);
+                    updateStarDisplay(rating);
+                });
+            });
+            
+            // マウスが離れたら現在の評価に戻す
+            document.getElementById('ratingStars').addEventListener('mouseleave', () => {
+                const currentRating = parseInt(ratingInput.value);
+                updateStarDisplay(currentRating);
+            });
+        }
+
+        // 星表示更新
+        function updateStarDisplay(rating) {
+            const stars = document.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                star.style.opacity = index < rating ? '1' : '0.3';
+            });
+        }
+
+        // レコード送信処理
+        function handleRecordSubmit(e) {
+            e.preventDefault();
+            
+            const formData = {
+                partId: this.dataset.partId,
+                date: document.getElementById('eatenDate').value,
+                memo: document.getElementById('memo').value,
+                rating: parseInt(document.getElementById('ratingValue').value),
+                restaurant: document.getElementById('restaurant').value
+            };
+            
+            // 記録保存
+            const isNewRecord = addRecord(formData);
+            
+            if (isNewRecord) {
+                // 経験値とレベルアップチェック
+                const oldLevel = getUserLevel();
+                updateUserExperience(10); // 新部位で10XP獲得
+                const newLevel = getUserLevel();
+                
+                // バッジチェック
+                const newBadges = checkAndAwardBadges();
+                
+                // 通知表示
+                if (newLevel > oldLevel) {
+                    showLevelUpModal(newLevel);
+                } else if (newBadges.length > 0) {
+                    showBadgeModal(newBadges[0]);
+                }
+            }
+            
+            // フォームリセット
+            this.reset();
+            document.getElementById('ratingValue').value = '5';
+            updateStarDisplay(5);
+            
+            // 画面更新
+            if (currentAnimal) {
+                generatePartsGrid(currentAnimal);
+                initializePage();
+            }
+            
+            closeRecordModal();
+        }
+
+        // モーダル関連
+        function closePartDetailModal() {
+            document.getElementById('partDetailModal').classList.remove('active');
+        }
+
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.remove('active');
+        }
+
+        function closeLevelUpModal() {
+            document.getElementById('levelUpModal').classList.remove('active');
+        }
+
+        function closeBadgeModal() {
+            document.getElementById('badgeModal').classList.remove('active');
+        }
+
+        // レベルアップモーダル表示
+        function showLevelUpModal(level) {
+            document.getElementById('newLevel').textContent = level;
+            document.getElementById('levelUpModal').classList.add('active');
+        }
+
+        // バッジモーダル表示
+        function showBadgeModal(badgeName) {
+            document.getElementById('badgeName').textContent = badgeName;
+            document.getElementById('badgeModal').classList.add('active');
+        }
+    </script>
+</body>
+</html>

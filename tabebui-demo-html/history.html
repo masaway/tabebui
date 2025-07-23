@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履歴 - たべぶい</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🥩 たべぶい</a>
+            <div class="user-info">
+                <div class="level-badge" id="userLevel">Lv.1</div>
+                <span id="userName">肉好きユーザー</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ナビゲーション -->
+    <nav class="nav">
+        <a href="index.html" class="nav-link">ダッシュボード</a>
+        <a href="parts.html" class="nav-link">部位を選ぶ</a>
+        <a href="progress.html" class="nav-link">進捗詳細</a>
+        <a href="history.html" class="nav-link active">履歴</a>
+    </nav>
+
+    <div class="container">
+        <!-- フィルター・検索 -->
+        <div class="card">
+            <h2>🔍 履歴検索・フィルター</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div>
+                    <label class="form-label">動物で絞り込み</label>
+                    <select id="animalFilter" class="form-control">
+                        <option value="">全ての動物</option>
+                        <option value="beef">🐄 牛</option>
+                        <option value="pork">🐷 豚</option>
+                        <option value="chicken">🐔 鳥</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">期間</label>
+                    <select id="periodFilter" class="form-control">
+                        <option value="">全期間</option>
+                        <option value="today">今日</option>
+                        <option value="week">今週</option>
+                        <option value="month">今月</option>
+                        <option value="year">今年</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">満足度</label>
+                    <select id="ratingFilter" class="form-control">
+                        <option value="">全ての評価</option>
+                        <option value="5">⭐⭐⭐⭐⭐</option>
+                        <option value="4">⭐⭐⭐⭐ 以上</option>
+                        <option value="3">⭐⭐⭐ 以上</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">並び順</label>
+                    <select id="sortOrder" class="form-control">
+                        <option value="date_desc">日付(新しい順)</option>
+                        <option value="date_asc">日付(古い順)</option>
+                        <option value="rating_desc">満足度(高い順)</option>
+                        <option value="rating_asc">満足度(低い順)</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="form-label">キーワード検索</label>
+                <input type="text" id="searchKeyword" class="form-control" placeholder="部位名、メモ、お店名で検索...">
+            </div>
+        </div>
+
+        <!-- 履歴サマリー -->
+        <div class="card">
+            <h2>📊 履歴サマリー</h2>
+            <div id="historySummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+
+        <!-- 履歴一覧 -->
+        <div class="card">
+            <h2>📚 食事履歴</h2>
+            <div id="recordsList">
+                <!-- 動的に生成 -->
+            </div>
+            <div id="noRecords" style="text-align: center; padding: 40px; color: #666; display: none;">
+                <div style="font-size: 2em; margin-bottom: 15px;">📝</div>
+                <p>記録が見つかりませんでした。</p>
+                <a href="parts.html" class="btn btn-primary" style="margin-top: 15px;">部位を記録する</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 記録詳細モーダル -->
+    <div class="modal" id="recordDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">記録詳細</h3>
+                <button class="close-btn" onclick="closeRecordDetailModal()">&times;</button>
+            </div>
+            <div id="recordDetailBody">
+                <!-- 動的に生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 記録編集モーダル -->
+    <div class="modal" id="editRecordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">記録編集</h3>
+                <button class="close-btn" onclick="closeEditRecordModal()">&times;</button>
+            </div>
+            <div id="editModalBody">
+                <form id="editRecordForm">
+                    <div class="form-group">
+                        <label class="form-label">部位</label>
+                        <div id="editPartInfo" style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+                            <!-- 部位情報 -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="editEatenDate">食べた日</label>
+                        <input type="date" id="editEatenDate" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="editMemo">メモ・感想</label>
+                        <textarea id="editMemo" class="form-control" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">満足度</label>
+                        <div id="editRatingStars" style="text-align: center; padding: 10px;">
+                            <span class="star" data-rating="1">⭐</span>
+                            <span class="star" data-rating="2">⭐</span>
+                            <span class="star" data-rating="3">⭐</span>
+                            <span class="star" data-rating="4">⭐</span>
+                            <span class="star" data-rating="5">⭐</span>
+                        </div>
+                        <input type="hidden" id="editRatingValue" value="5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="editRestaurant">お店</label>
+                        <input type="text" id="editRestaurant" class="form-control">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 25px;">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">更新</button>
+                        <button type="button" class="btn" onclick="deleteCurrentRecord()" style="background: #e74c3c; color: white;">削除</button>
+                        <button type="button" class="btn btn-outline" onclick="closeEditRecordModal()">キャンセル</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/parts.js"></script>
+    <script src="js/records.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        let filteredRecords = [];
+        let currentEditingRecordId = null;
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeHistoryPage();
+            setupEventListeners();
+        });
+
+        // 履歴ページ初期化
+        function initializeHistoryPage() {
+            const userLevel = getUserLevel();
+            document.getElementById('userLevel').textContent = `Lv.${userLevel}`;
+            
+            updateHistorySummary();
+            filterAndDisplayRecords();
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            // フィルター変更
+            ['animalFilter', 'periodFilter', 'ratingFilter', 'sortOrder'].forEach(id => {
+                document.getElementById(id).addEventListener('change', filterAndDisplayRecords);
+            });
+            
+            // 検索キーワード
+            document.getElementById('searchKeyword').addEventListener('input', debounce(filterAndDisplayRecords, 300));
+            
+            // 編集フォーム
+            document.getElementById('editRecordForm').addEventListener('submit', handleEditSubmit);
+            
+            // 編集用星評価
+            setupEditRatingStars();
+        }
+
+        // 履歴サマリー更新
+        function updateHistorySummary() {
+            const records = getRecords();
+            const thisMonthRecords = getThisMonthRecords();
+            const avgRating = records.length > 0 ? 
+                records.reduce((sum, r) => sum + r.rating, 0) / records.length : 0;
+            
+            const uniqueParts = new Set(records.map(r => r.partId)).size;
+            const uniqueRestaurants = new Set(
+                records.filter(r => r.restaurant).map(r => r.restaurant)
+            ).size;
+
+            document.getElementById('historySummary').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${formatNumber(records.length)}</div>
+                    <div class="stat-label">総記録数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${formatNumber(thisMonthRecords.length)}</div>
+                    <div class="stat-label">今月の記録</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${formatNumber(uniqueParts)}</div>
+                    <div class="stat-label">記録した部位数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avgRating.toFixed(1)}</div>
+                    <div class="stat-label">平均満足度</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${formatNumber(uniqueRestaurants)}</div>
+                    <div class="stat-label">訪問店舗数</div>
+                </div>
+            `;
+        }
+
+        // 記録フィルター・表示
+        function filterAndDisplayRecords() {
+            let records = getRecords();
+            
+            // 動物フィルター
+            const animalFilter = document.getElementById('animalFilter').value;
+            if (animalFilter) {
+                records = records.filter(record => {
+                    const part = getPartById(record.partId);
+                    return part && part.animalType === animalFilter;
+                });
+            }
+            
+            // 期間フィルター
+            const periodFilter = document.getElementById('periodFilter').value;
+            if (periodFilter) {
+                const now = new Date();
+                let startDate;
+                
+                switch (periodFilter) {
+                    case 'today':
+                        startDate = new Date(now.toDateString());
+                        break;
+                    case 'week':
+                        startDate = new Date(now);
+                        startDate.setDate(now.getDate() - 7);
+                        break;
+                    case 'month':
+                        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                        break;
+                    case 'year':
+                        startDate = new Date(now.getFullYear(), 0, 1);
+                        break;
+                }
+                
+                if (startDate) {
+                    records = records.filter(record => new Date(record.date) >= startDate);
+                }
+            }
+            
+            // 満足度フィルター
+            const ratingFilter = document.getElementById('ratingFilter').value;
+            if (ratingFilter) {
+                const minRating = parseInt(ratingFilter);
+                records = records.filter(record => record.rating >= minRating);
+            }
+            
+            // キーワード検索
+            const keyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
+            if (keyword) {
+                records = records.filter(record => {
+                    const part = getPartById(record.partId);
+                    const partName = part ? (part.name + part.nameKana).toLowerCase() : '';
+                    const memo = (record.memo || '').toLowerCase();
+                    const restaurant = (record.restaurant || '').toLowerCase();
+                    
+                    return partName.includes(keyword) || 
+                           memo.includes(keyword) || 
+                           restaurant.includes(keyword);
+                });
+            }
+            
+            // ソート
+            const sortOrder = document.getElementById('sortOrder').value;
+            records.sort((a, b) => {
+                switch (sortOrder) {
+                    case 'date_asc':
+                        return new Date(a.date) - new Date(b.date);
+                    case 'date_desc':
+                        return new Date(b.date) - new Date(a.date);
+                    case 'rating_asc':
+                        return a.rating - b.rating;
+                    case 'rating_desc':
+                        return b.rating - a.rating;
+                    default:
+                        return new Date(b.date) - new Date(a.date);
+                }
+            });
+            
+            filteredRecords = records;
+            displayRecords(records);
+        }
+
+        // 記録表示
+        function displayRecords(records) {
+            const container = document.getElementById('recordsList');
+            const noRecordsDiv = document.getElementById('noRecords');
+            
+            if (records.length === 0) {
+                container.style.display = 'none';
+                noRecordsDiv.style.display = 'block';
+                return;
+            }
+            
+            container.style.display = 'block';
+            noRecordsDiv.style.display = 'none';
+            
+            container.innerHTML = records.map(record => {
+                const part = getPartById(record.partId);
+                if (!part) return '';
+                
+                const animalInfo = getAnimalInfo(part.animalType);
+                const rarityInfo = getRarityInfo(part.rarity);
+                
+                return `
+                    <div class="record-item" style="
+                        padding: 20px; 
+                        border-bottom: 1px solid #eee; 
+                        cursor: pointer;
+                        transition: background-color 0.3s ease;
+                    " onclick="showRecordDetail('${record.id}')" 
+                       onmouseover="this.style.backgroundColor='#f8f9fa'" 
+                       onmouseout="this.style.backgroundColor='white'">
+                        <div style="display: flex; justify-content: space-between; align-items: start; gap: 15px;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                                    <span style="font-size: 1.5em;">${animalInfo.icon}</span>
+                                    <span style="font-size: 1.2em; font-weight: bold;">${part.name}</span>
+                                    <span style="color: ${rarityInfo.color}; font-size: 0.9em;">
+                                        ${getRarityStars(part.rarity)}
+                                    </span>
+                                </div>
+                                <div style="color: #666; margin-bottom: 8px;">
+                                    ${part.nameKana} (${animalInfo.name})
+                                </div>
+                                ${record.memo ? 
+                                    `<div style="color: #333; margin-bottom: 8px; line-height: 1.4;">
+                                        ${record.memo.length > 100 ? record.memo.substring(0, 100) + '...' : record.memo}
+                                    </div>` : ''
+                                }
+                                ${record.restaurant ? 
+                                    `<div style="color: #666; font-size: 0.9em;">
+                                        📍 ${record.restaurant}
+                                    </div>` : ''
+                                }
+                            </div>
+                            <div style="text-align: right; color: #666;">
+                                <div style="margin-bottom: 5px;">
+                                    ${formatDate(record.date)}
+                                </div>
+                                <div style="color: #ffd700; font-size: 1.1em;">
+                                    ${'⭐'.repeat(record.rating)}
+                                </div>
+                                <div style="font-size: 0.8em; margin-top: 5px;">
+                                    ${getRelativeDate(record.date)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 記録詳細表示
+        function showRecordDetail(recordId) {
+            const record = getRecords().find(r => r.id === recordId);
+            if (!record) return;
+            
+            const part = getPartById(record.partId);
+            if (!part) return;
+            
+            const animalInfo = getAnimalInfo(part.animalType);
+            const rarityInfo = getRarityInfo(part.rarity);
+            
+            document.getElementById('recordDetailBody').innerHTML = `
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <div style="font-size: 3em; margin-bottom: 10px;">${animalInfo.icon}</div>
+                    <h3 style="margin-bottom: 5px;">${part.name}</h3>
+                    <div style="color: #666; margin-bottom: 10px;">${part.nameKana}</div>
+                    <div style="color: ${rarityInfo.color}; font-weight: bold;">
+                        ${getRarityStars(part.rarity)} ${rarityInfo.label}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">📅 食べた日</h4>
+                    <p>${formatDate(record.date)} (${getRelativeDate(record.date)})</p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">⭐ 満足度</h4>
+                    <div style="font-size: 1.2em; color: #ffd700;">
+                        ${'⭐'.repeat(record.rating)} (${record.rating}/5)
+                    </div>
+                </div>
+                
+                ${record.memo ? `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px;">📝 メモ・感想</h4>
+                        <p style="line-height: 1.6; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            ${record.memo}
+                        </p>
+                    </div>
+                ` : ''}
+                
+                ${record.restaurant ? `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px;">🏪 お店</h4>
+                        <p>${record.restaurant}</p>
+                    </div>
+                ` : ''}
+                
+                <div style="margin-bottom: 25px;">
+                    <h4 style="margin-bottom: 10px;">🍖 部位について</h4>
+                    <p style="color: #666; line-height: 1.6;">${part.description}</p>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="editRecord('${record.id}')">
+                        編集
+                    </button>
+                    <button class="btn btn-outline" onclick="closeRecordDetailModal()">
+                        閉じる
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('recordDetailModal').classList.add('active');
+        }
+
+        // 記録編集
+        function editRecord(recordId) {
+            const record = getRecords().find(r => r.id === recordId);
+            if (!record) return;
+            
+            const part = getPartById(record.partId);
+            if (!part) return;
+            
+            currentEditingRecordId = recordId;
+            
+            const animalInfo = getAnimalInfo(part.animalType);
+            const rarityInfo = getRarityInfo(part.rarity);
+            
+            // 部位情報表示
+            document.getElementById('editPartInfo').innerHTML = `
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 2em;">${animalInfo.icon}</div>
+                    <div>
+                        <div style="font-size: 1.2em; font-weight: bold;">${part.name}</div>
+                        <div style="color: #666;">${part.nameKana}</div>
+                        <div style="color: ${rarityInfo.color}; font-size: 0.9em;">
+                            ${getRarityStars(part.rarity)} ${rarityInfo.label}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // フォーム値設定
+            document.getElementById('editEatenDate').value = record.date;
+            document.getElementById('editMemo').value = record.memo || '';
+            document.getElementById('editRatingValue').value = record.rating;
+            document.getElementById('editRestaurant').value = record.restaurant || '';
+            
+            // 星評価表示更新
+            updateEditStarDisplay(record.rating);
+            
+            // モーダル表示
+            closeRecordDetailModal();
+            document.getElementById('editRecordModal').classList.add('active');
+        }
+
+        // 編集用星評価設定
+        function setupEditRatingStars() {
+            const stars = document.querySelectorAll('#editRatingStars .star');
+            const ratingInput = document.getElementById('editRatingValue');
+            
+            stars.forEach((star, index) => {
+                star.style.cursor = 'pointer';
+                star.style.fontSize = '1.5em';
+                star.style.margin = '0 2px';
+                
+                star.addEventListener('click', () => {
+                    const rating = parseInt(star.dataset.rating);
+                    ratingInput.value = rating;
+                    updateEditStarDisplay(rating);
+                });
+                
+                star.addEventListener('mouseover', () => {
+                    const rating = parseInt(star.dataset.rating);
+                    updateEditStarDisplay(rating);
+                });
+            });
+            
+            document.getElementById('editRatingStars').addEventListener('mouseleave', () => {
+                const currentRating = parseInt(ratingInput.value);
+                updateEditStarDisplay(currentRating);
+            });
+        }
+
+        // 編集星表示更新
+        function updateEditStarDisplay(rating) {
+            const stars = document.querySelectorAll('#editRatingStars .star');
+            stars.forEach((star, index) => {
+                star.style.opacity = index < rating ? '1' : '0.3';
+            });
+        }
+
+        // 編集フォーム送信
+        function handleEditSubmit(e) {
+            e.preventDefault();
+            
+            if (!currentEditingRecordId) return;
+            
+            const updates = {
+                date: document.getElementById('editEatenDate').value,
+                memo: document.getElementById('editMemo').value,
+                rating: parseInt(document.getElementById('editRatingValue').value),
+                restaurant: document.getElementById('editRestaurant').value
+            };
+            
+            if (updateRecord(currentEditingRecordId, updates)) {
+                closeEditRecordModal();
+                filterAndDisplayRecords();
+                updateHistorySummary();
+                alert('記録を更新しました！');
+            } else {
+                alert('記録の更新に失敗しました。');
+            }
+        }
+
+        // 記録削除
+        function deleteCurrentRecord() {
+            if (!currentEditingRecordId) return;
+            
+            if (confirm('この記録を削除しますか？この操作は取り消せません。')) {
+                if (deleteRecord(currentEditingRecordId)) {
+                    closeEditRecordModal();
+                    filterAndDisplayRecords();
+                    updateHistorySummary();
+                    alert('記録を削除しました。');
+                } else {
+                    alert('記録の削除に失敗しました。');
+                }
+            }
+        }
+
+        // モーダル関連
+        function closeRecordDetailModal() {
+            document.getElementById('recordDetailModal').classList.remove('active');
+        }
+
+        function closeEditRecordModal() {
+            document.getElementById('editRecordModal').classList.remove('active');
+            currentEditingRecordId = null;
+        }
+
+        // デバウンス関数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html>
