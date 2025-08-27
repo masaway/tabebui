@@ -1,0 +1,7 @@
+-- 初期化スクリプト（必要に応じてテーブル作成などを追加）
+CREATE TABLE IF NOT EXISTS sample (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
