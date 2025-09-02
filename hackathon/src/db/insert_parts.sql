@@ -1,5 +1,7 @@
 -- tabebui データベースを使用
 USE tabebui;
+-- 文字化け対策: クライアント接続文字コードをUTF-8に固定
+SET NAMES utf8mb4;
 
 -- 牛肉部位
 INSERT INTO animal_parts (animal_type, part_category, part_name, part_name_jp, difficulty_level, description) VALUES

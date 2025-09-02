@@ -5,6 +5,8 @@ services:
     image: mysql:8.0
     container_name: app_mysql
     restart: unless-stopped
+    # サーバーのデフォルト文字セット/照合順序をUTF-8に固定
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: tabebui
@@ -31,7 +33,7 @@ services:
       DB_PORT: 3306
       DB_USER: app
       DB_PASSWORD: app
-      DB_NAME: app
+      DB_NAME: tabebui
       CORS_ORIGINS: http://localhost:5173
     depends_on:
       db:

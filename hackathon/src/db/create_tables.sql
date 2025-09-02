@@ -1,5 +1,7 @@
 -- tabebui データベースを使用
 USE tabebui;
+-- 文字化け対策: クライアント接続文字コードをUTF-8に固定
+SET NAMES utf8mb4;
 
 -- 1. users（ユーザーテーブル）
 CREATE TABLE users (
