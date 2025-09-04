@@ -12,7 +12,16 @@
 **起動**
 - 前提: Docker / Docker Compose が利用可能
 ## 起動
-docker compose up --build
+### 初回起動
+```bash
+docker compose build
+```
+
+### 通常起動
+```bash
+docker compose up
+```
+
 - アクセス:
   - Frontend: http://localhost:5173
   - Backend(API): http://localhost:8000
