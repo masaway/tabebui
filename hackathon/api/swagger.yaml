@@ -1,0 +1,513 @@
+openapi: 3.0.3
+info:
+  title: たべぶい API
+  description: 牛・豚・鳥の各部位を食べた記録を管理するAPI
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+paths:
+  /api/user/progress:
+    get:
+      summary: ユーザーの進捗情報取得
+      description: ログインユーザーの各動物カテゴリ（牛・豚・鳥）ごとの部位制覇率と、全体の制覇率を取得
+      tags:
+        - TOP画面
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_progress:
+                        type: number
+                        format: float
+                        example: 0.45
+                        description: 全体の制覇率
+                      beef:
+                        $ref: '#/components/schemas/AnimalProgress'
+                      pork:
+                        $ref: '#/components/schemas/AnimalProgress'
+                      chicken:
+                        $ref: '#/components/schemas/AnimalProgress'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/eating-records/recent:
+    get:
+      summary: 最近の食事記録を取得
+      description: ログインユーザーの最近の食事記録を取得
+      tags:
+        - TOP画面
+      parameters:
+        - name: limit
+          in: query
+          description: 取得件数
+          required: false
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EatingRecord'
+
+  /api/eating-records:
+    get:
+      summary: ユーザーの食事記録一覧を取得
+      description: ログインユーザーの食事記録を取得
+      tags:
+        - 食べた部位ページ
+      parameters:
+        - name: animal_type
+          in: query
+          description: 動物種別でフィルタ
+          required: false
+          schema:
+            type: string
+            enum: [beef, pork, chicken]
+        - name: page
+          in: query
+          description: ページ番号
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 1ページあたりの件数
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          description: ソート順
+          required: false
+          schema:
+            type: string
+            enum: [eaten_at_desc, eaten_at_asc]
+            default: eaten_at_desc
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EatingRecordDetail'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      summary: 食事記録を作成
+      description: 新しい食事記録を作成
+      tags:
+        - 部位を記録する
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - animal_part_id
+              properties:
+                animal_part_id:
+                  type: integer
+                  description: 部位ID
+                  example: 15
+                restaurant_name:
+                  type: string
+                  description: レストラン名
+                  maxLength: 100
+                  example: "焼肉やまちゃん"
+                eaten_at:
+                  type: string
+                  format: date-time
+                  description: 食事日時（ISO 8601形式）
+                  example: "2024-09-01T18:30:00Z"
+                memo:
+                  type: string
+                  description: メモ
+                  maxLength: 500
+                  example: "タレが絶品だった！"
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: 評価
+                  example: 5
+                photo_url:
+                  type: string
+                  format: uri
+                  description: 写真URL
+                  example: "https://example.com/photo.jpg"
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 102
+                      animal_part_id:
+                        type: integer
+                        example: 15
+                      restaurant_name:
+                        type: string
+                        example: "焼肉やまちゃん"
+                      eaten_at:
+                        type: string
+                        format: date-time
+                        example: "2024-09-01T18:30:00Z"
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-09-01T19:00:00Z"
+        '400':
+          $ref: '#/components/responses/InvalidPartId'
+
+  /api/animal-parts:
+    get:
+      summary: 部位マスターデータを取得
+      description: 全ての動物の部位マスターデータを取得
+      tags:
+        - 食べた部位ページ
+      parameters:
+        - name: animal_type
+          in: query
+          description: 動物種別でフィルタ
+          required: false
+          schema:
+            type: string
+            enum: [beef, pork, chicken]
+        - name: part_category
+          in: query
+          description: カテゴリでフィルタ
+          required: false
+          schema:
+            type: string
+            enum: [meat, organ]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnimalPart'
+
+  /api/animal-parts/{animalType}:
+    get:
+      summary: 動物別の部位一覧を取得
+      description: 指定された動物の部位一覧を取得
+      tags:
+        - 部位を記録する
+      parameters:
+        - name: animalType
+          in: path
+          description: 動物の種類
+          required: true
+          schema:
+            type: string
+            enum: [beef, pork, chicken]
+        - name: part_category
+          in: query
+          description: カテゴリでフィルタ
+          required: false
+          schema:
+            type: string
+            enum: [meat, organ]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnimalPart'
+        '400':
+          $ref: '#/components/responses/InvalidAnimalType'
+
+components:
+  schemas:
+    AnimalProgress:
+      type: object
+      properties:
+        eaten_count:
+          type: integer
+          example: 10
+          description: 食べた部位数
+        total_count:
+          type: integer
+          example: 20
+          description: 総部位数
+        progress:
+          type: number
+          format: float
+          example: 0.5
+          description: 制覇率
+
+    EatingRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        animal_part:
+          type: object
+          properties:
+            part_name_jp:
+              type: string
+              example: "ハラミ"
+            animal_type:
+              type: string
+              enum: [beef, pork, chicken]
+              example: "beef"
+        restaurant_name:
+          type: string
+          example: "焼肉○○"
+        eaten_at:
+          type: string
+          format: date-time
+          example: "2024-08-15T19:00:00Z"
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        photo_url:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://example.com/photo.jpg"
+
+    EatingRecordDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        animal_part:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 15
+            part_name_jp:
+              type: string
+              example: "ハラミ"
+            animal_type:
+              type: string
+              enum: [beef, pork, chicken]
+              example: "beef"
+            part_category:
+              type: string
+              enum: [meat, organ]
+              example: "organ"
+            difficulty_level:
+              type: integer
+              minimum: 1
+              maximum: 5
+              example: 1
+        restaurant_name:
+          type: string
+          example: "焼肉○○"
+        eaten_at:
+          type: string
+          format: date-time
+          example: "2024-08-15T19:00:00Z"
+        memo:
+          type: string
+          example: "とても美味しかった"
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        photo_url:
+          type: string
+          format: uri
+          nullable: true
+          example: null
+
+    AnimalPart:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        animal_type:
+          type: string
+          enum: [beef, pork, chicken]
+          example: "beef"
+        part_category:
+          type: string
+          enum: [meat, organ]
+          example: "meat"
+        part_name:
+          type: string
+          example: "neck"
+        part_name_jp:
+          type: string
+          example: "ネック"
+        description:
+          type: string
+          example: "硬いがうま味豊富、煮込み向き"
+        difficulty_level:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 3
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 45
+        total_pages:
+          type: integer
+          example: 3
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+  responses:
+    Unauthorized:
+      description: 認証が必要です
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: "UNAUTHORIZED"
+                      message:
+                        type: string
+                        example: "認証が必要です"
+
+    InvalidAnimalType:
+      description: 無効な動物タイプです
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: "INVALID_ANIMAL_TYPE"
+                      message:
+                        type: string
+                        example: "無効な動物タイプです"
+
+    InvalidPartId:
+      description: 指定された部位IDが存在しません
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: "INVALID_PART_ID"
+                      message:
+                        type: string
+                        example: "指定された部位IDが存在しません"
+                      details:
+                        type: object
+                        properties:
+                          animal_part_id:
+                            type: integer
+                            example: 999
+
+tags:
+  - name: TOP画面
+    description: TOP画面関連API
+  - name: 食べた部位ページ
+    description: 食べた部位ページ関連API
+  - name: 部位を記録する
+    description: 部位記録関連API
