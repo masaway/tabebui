@@ -39,9 +39,7 @@
         "total_count": 10,
         "progress": 0.8
       }
-    },
-    "message": "Success",
-    "timestamp": "2024-08-15T19:00:00Z"
+    }
   }
   ```
 
@@ -52,8 +50,7 @@
     "error": {
       "code": "UNAUTHORIZED",
       "message": "認証が必要です"
-    },
-    "timestamp": "2024-08-15T19:00:00Z"
+    }
   }
   ```
 
@@ -94,9 +91,7 @@
         "rating": 5,
         "photo_url": "https://example.com/photo.jpg"
       }
-    ],
-    "message": "Success",
-    "timestamp": "2024-08-15T19:00:00Z"
+    ]
   }
   ```
 
@@ -152,9 +147,7 @@
       "per_page": 20,
       "total": 45,
       "total_pages": 3
-    },
-    "message": "Success",
-    "timestamp": "2024-08-15T19:00:00Z"
+    }
   }
   ```
 
@@ -191,9 +184,7 @@
         "description": "硬いがうま味豊富、煮込み向き",
         "difficulty_level": 3
       }
-    ],
-    "message": "Success",
-    "timestamp": "2024-08-15T19:00:00Z"
+    ]
   }
   ```
 
@@ -236,9 +227,7 @@
         "description": "横隔膜の薄い部分、柔らかい",
         "difficulty_level": 1
       }
-    ],
-    "message": "Success",
-    "timestamp": "2024-08-15T19:00:00Z"
+    ]
   }
   ```
 
@@ -249,8 +238,7 @@
     "error": {
       "code": "INVALID_ANIMAL_TYPE",
       "message": "無効な動物タイプです"
-    },
-    "timestamp": "2024-08-15T19:00:00Z"
+    }
   }
   ```
 
@@ -304,9 +292,7 @@
       "restaurant_name": "焼肉やまちゃん",
       "eaten_at": "2024-09-01T18:30:00Z",
       "created_at": "2024-09-01T19:00:00Z"
-    },
-    "message": "Eating record created successfully",
-    "timestamp": "2024-09-01T19:00:00Z"
+    }
   }
   ```
 
@@ -320,8 +306,7 @@
       "details": {
         "animal_part_id": 999
       }
-    },
-    "timestamp": "2024-09-01T19:00:00Z"
+    }
   }
   ```
 
@@ -339,22 +324,3 @@
 | INVALID_ANIMAL_TYPE | 400 | 無効な動物タイプです |
 | INVALID_PART_ID | 400 | 無効な部位IDです |
 | SERVER_ERROR | 500 | サーバーエラー |
-
-### 日付形式
-- **すべての日付**: ISO 8601形式（例: `2024-08-15T19:00:00Z`）
-- **タイムゾーン**: UTC
-
-### ページネーション
-- **デフォルト件数**: 20件
-- **最大件数**: 100件
-- **レスポンス形式**:
-  ```json
-  {
-    "pagination": {
-      "page": 1,
-      "per_page": 20,
-      "total": 100,
-      "total_pages": 5
-    }
-  }
-  ```
