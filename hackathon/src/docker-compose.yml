@@ -45,15 +45,16 @@ services:
 
   front:
     build: ./front
-    container_name: app_front
+    container_name: front
     restart: unless-stopped
     depends_on:
       - server
     ports:
-      - "5173:5173"
+      - "80:5173"
     environment:
       # API への呼び出しは Vite の devServer プロキシで /api -> server:8000 にルーティングします
       NODE_ENV: development
+      ALLOWED_HOSTS: server,localhost,127.0.0.1,0.0.0.0,tabebui.com
     volumes:
       - ./front:/usr/src/app
       - /usr/src/app/node_modules
