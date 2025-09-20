@@ -9,7 +9,7 @@ import LoginPage from './pages/LoginPage'
 export default function App() {
   return (
     <Router>
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#ffffff' }}>
         <Routes>
           <Route path="/" element={<TopPage />} />
           <Route path="/parts" element={<PartsPage />} />
