@@ -374,7 +374,14 @@ def post_chat_message(request: ChatRequest):
     )
 
     updated_history = [msg.dict() for msg in trimmed_history]
-    updated_history.append({"role": "user", "content": request.message})
+    latest_user = updated_history[-1] if updated_history else None
+    if not (
+        latest_user
+        and latest_user.get("role") == "user"
+        and latest_user.get("content") == request.message
+    ):
+        updated_history.append({"role": "user", "content": request.message})
+
     updated_history.append({"role": "assistant", "content": reply})
 
     data = {
