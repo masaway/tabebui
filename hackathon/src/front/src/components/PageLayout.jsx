@@ -6,7 +6,7 @@ const styles = {
     fontFamily: 'system-ui, sans-serif',
     padding: 24,
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #8B4513 0%, #654321 100%)'
+    background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)'
   },
   header: {
     marginBottom: 24,

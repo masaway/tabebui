@@ -425,7 +425,7 @@ export default function TopPage() {
           body {
             margin: 0;
             padding: 0;
-            background: linear-gradient(180deg, #8B4513 0%, #654321 100%);
+            background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
           }
           
           @keyframes fireGlow {
