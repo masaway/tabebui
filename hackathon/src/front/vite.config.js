@@ -10,8 +10,7 @@ export default defineConfig({
       // ブラウザからは /api にアクセス → Node(Vite) が app_server:8000 にプロキシ
       '/api': {
         target: 'http://server:8000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        changeOrigin: true
       }
     }
   }

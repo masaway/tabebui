@@ -1,15 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageLayout from '../components/PageLayout'
 
 export default function RecordPage() {
   const [selectedAnimal, setSelectedAnimal] = useState('')
-  const [selectedPart, setSelectedPart] = useState('')
+  const [selectedParts, setSelectedParts] = useState([]) // {id, name} の配列
   const [memo, setMemo] = useState('')
   const [eatenDate, setEatenDate] = useState(new Date().toISOString().split('T')[0])
   const [restaurantName, setRestaurantName] = useState('')
   const [address, setAddress] = useState('')
   const [roundNumber, setRoundNumber] = useState(1)
+  const [animalParts, setAnimalParts] = useState([])
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   const animalData = {
@@ -17,43 +19,105 @@ export default function RecordPage() {
       name: '牛',
       emoji: '🐄',
       color: '#dc3545',
-      lightColor: '#f8d7da',
-      parts: ['ロース', 'ヒレ', 'サーロイン', 'リブロース', 'カルビ', 'ハラミ', 'タン', 'ミスジ']
+      lightColor: '#f8d7da'
     },
     pork: {
       name: '豚',
-      emoji: '🐷', 
+      emoji: '🐷',
       color: '#fd7e14',
-      lightColor: '#ffecd1',
-      parts: ['ロース', 'ヒレ', 'バラ', 'カタ', 'モモ', 'トンソク', 'ホルモン', 'タン']
+      lightColor: '#ffecd1'
     },
     chicken: {
       name: '鳥',
       emoji: '🐓',
       color: '#ffc107',
-      lightColor: '#fff3cd',
-      parts: ['モモ', 'ムネ', 'ササミ', '手羽元', '手羽先', 'ボンジリ', 'ハツ', 'レバー']
+      lightColor: '#fff3cd'
     }
   }
 
-  const handleSubmit = (e) => {
+  // 動物選択時に部位データを取得
+  const fetchAnimalParts = async (animalType) => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/animal-parts/${animalType}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAnimalParts(data.data || [])
+      } else {
+        console.error('部位データの取得に失敗しました')
+        setAnimalParts([])
+      }
+    } catch (error) {
+      console.error('API呼び出しエラー:', error)
+      setAnimalParts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 動物選択時の処理
+  const handleAnimalSelect = (animalType) => {
+    setSelectedAnimal(animalType)
+    setSelectedParts([])
+    fetchAnimalParts(animalType)
+  }
+
+  // 部位選択/解除の処理
+  const handlePartToggle = (part) => {
+    setSelectedParts(prev => {
+      const existing = prev.find(p => p.id === part.id)
+      if (existing) {
+        // 既に選択されている場合は削除
+        return prev.filter(p => p.id !== part.id)
+      } else {
+        // 未選択の場合は追加
+        return [...prev, { id: part.id, name: part.part_name_jp }]
+      }
+    })
+  }
+
+  // 部位が選択されているかチェック
+  const isPartSelected = (partId) => {
+    return selectedParts.some(p => p.id === partId)
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (selectedAnimal && selectedPart) {
+    if (selectedAnimal && selectedParts.length > 0) {
       // 記録データをまとめる
       const recordData = {
-        animal: selectedAnimal,
-        animalName: animalData[selectedAnimal].name,
-        part: selectedPart,
-        memo,
-        eatenDate,
-        restaurantName,
-        address,
-        roundNumber
+        animal_part_ids: selectedParts.map(part => part.id),
+        restaurant_name: restaurantName || null,
+        eaten_at: new Date(eatenDate).toISOString(),
+        memo: memo || null,
+        rating: null, // 評価は今回実装しない
+        photo_url: null // 写真も今回実装しない
       }
-      
-      console.log('記録データ:', recordData)
-      alert(`${animalData[selectedAnimal].name}の${selectedPart}を記録しました！`)
-      navigate('/')
+
+      try {
+        const response = await fetch('/api/eating-records', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(recordData)
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          console.log('記録成功:', result)
+          const partNames = selectedParts.map(p => p.name).join('、')
+          alert(`${animalData[selectedAnimal].name}の${partNames}を記録しました！`)
+          navigate('/')
+        } else {
+          const error = await response.json()
+          console.error('記録エラー:', error)
+          alert('記録の保存に失敗しました。')
+        }
+      } catch (error) {
+        console.error('API呼び出しエラー:', error)
+        alert('記録の保存中にエラーが発生しました。')
+      }
     }
   }
 
@@ -96,10 +160,7 @@ export default function RecordPage() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => {
-                    setSelectedAnimal(key)
-                    setSelectedPart('')
-                  }}
+                  onClick={() => handleAnimalSelect(key)}
                   style={{
                     padding: '20px 16px',
                     backgroundColor: selectedAnimal === key ? animal.color : 'white',
@@ -137,7 +198,7 @@ export default function RecordPage() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               fontWeight: 'bold'
-            }}>🥩 2. 部位を選択</h2>
+            }}>🥩 2. 部位を選択（複数選択可能）</h2>
             
             {selectedAnimal ? (
               <div style={{ 
@@ -168,35 +229,142 @@ export default function RecordPage() {
                     marginLeft: 'auto'
                   }}>選択中</span>
                 </h3>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                  gap: '12px',
-                  animation: 'fadeIn 0.3s ease'
-                }}>
-                  {animalData[selectedAnimal].parts.map((part) => (
-                    <button
-                      key={`${selectedAnimal}-${part}`}
-                      type="button"
-                      onClick={() => setSelectedPart(part)}
-                      style={{
-                        padding: '14px 8px',
-                        backgroundColor: selectedPart === part ? animalData[selectedAnimal].color : 'white',
-                        color: selectedPart === part ? 'white' : animalData[selectedAnimal].color,
-                        border: `2px solid ${animalData[selectedAnimal].color}`,
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: selectedPart === part ? 'bold' : 'normal',
-                        transition: 'all 0.2s ease',
-                        transform: selectedPart === part ? 'scale(1.05)' : 'scale(1)',
-                        boxShadow: selectedPart === part ? `0 4px 12px ${animalData[selectedAnimal].color}40` : '0 2px 4px rgba(0,0,0,0.1)'
-                      }}
-                    >
-                      {part}
-                    </button>
-                  ))}
-                </div>
+{loading ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    color: '#667eea',
+                    fontSize: '16px'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+                    部位データを読み込み中...
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                    gap: '12px',
+                    animation: 'fadeIn 0.3s ease'
+                  }}>
+                    {animalParts.map((part) => {
+                      const selected = isPartSelected(part.id)
+                      return (
+                        <button
+                          key={`${selectedAnimal}-${part.id}`}
+                          type="button"
+                          onClick={() => handlePartToggle(part)}
+                          style={{
+                            padding: '14px 8px',
+                            backgroundColor: selected ? animalData[selectedAnimal].color : 'white',
+                            color: selected ? 'white' : animalData[selectedAnimal].color,
+                            border: `2px solid ${animalData[selectedAnimal].color}`,
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: selected ? 'bold' : 'normal',
+                            transition: 'all 0.2s ease',
+                            transform: selected ? 'scale(1.05)' : 'scale(1)',
+                            boxShadow: selected ? `0 4px 12px ${animalData[selectedAnimal].color}40` : '0 2px 4px rgba(0,0,0,0.1)',
+                            position: 'relative'
+                          }}
+                          title={part.description}
+                        >
+                          {selected && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '-8px',
+                              right: '-8px',
+                              backgroundColor: '#28a745',
+                              color: 'white',
+                              borderRadius: '50%',
+                              width: '20px',
+                              height: '20px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '12px',
+                              fontWeight: 'bold'
+                            }}>
+                              ✓
+                            </div>
+                          )}
+                          {part.part_name_jp}
+                          {part.part_category === 'organ' && (
+                            <div style={{ fontSize: '10px', opacity: 0.8 }}>内臓</div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* 選択された部位の表示 */}
+                {selectedParts.length > 0 && (
+                  <div style={{
+                    marginTop: '20px',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    backgroundColor: '#f8f9fa',
+                    border: '2px solid #e9ecef'
+                  }}>
+                    <h4 style={{
+                      fontSize: '16px',
+                      marginBottom: '12px',
+                      color: '#495057',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <span>✅</span>
+                      選択した部位 ({selectedParts.length}個)
+                    </h4>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}>
+                      {selectedParts.map((part) => (
+                        <div
+                          key={part.id}
+                          style={{
+                            backgroundColor: animalData[selectedAnimal].color,
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          {part.name}
+                          <button
+                            type="button"
+                            onClick={() => handlePartToggle({ id: part.id, part_name_jp: part.name })}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.3)',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '18px',
+                              height: '18px',
+                              color: 'white',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="削除"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{
@@ -229,7 +397,7 @@ export default function RecordPage() {
               fontWeight: 'bold'
             }}>📝 3. 詳細情報を入力</h2>
             
-            {selectedAnimal && selectedPart ? (
+            {selectedAnimal && selectedParts.length > 0 ? (
               <>
 
             {/* メモ入力 */}
@@ -409,7 +577,7 @@ export default function RecordPage() {
 
 
             {/* 記録確認 */}
-            {selectedAnimal && selectedPart && (
+            {selectedAnimal && selectedParts.length > 0 && (
               <div style={{ 
                 padding: '20px', 
                 background: 'linear-gradient(135deg, #667eea, #764ba2)',
@@ -432,9 +600,12 @@ export default function RecordPage() {
                     <span>{animalData[selectedAnimal].emoji}</span>
                     <strong>動物:</strong> {animalData[selectedAnimal].name}
                   </p>
-                  <p style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <p style={{ marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <span>🥩</span>
-                    <strong>部位:</strong> {selectedPart}
+                    <span>
+                      <strong>部位:</strong> {selectedParts.map(p => p.name).join('、')}
+                      <span style={{ fontSize: '12px', opacity: 0.8 }}>（{selectedParts.length}個）</span>
+                    </span>
                   </p>
                   <p style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>📅</span>
@@ -468,24 +639,24 @@ export default function RecordPage() {
             
                 <button
                   type="submit"
-                  disabled={!selectedAnimal || !selectedPart}
+                  disabled={!selectedAnimal || selectedParts.length === 0}
                   style={{
                     padding: '20px 32px',
-                    background: selectedAnimal && selectedPart 
-                      ? 'linear-gradient(45deg, #ff6b6b, #ff8e8e)' 
+                    background: selectedAnimal && selectedParts.length > 0
+                      ? 'linear-gradient(45deg, #ff6b6b, #ff8e8e)'
                       : 'linear-gradient(45deg, #6c757d, #8d959d)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '16px',
                     fontSize: '18px',
                     fontWeight: 'bold',
-                    cursor: selectedAnimal && selectedPart ? 'pointer' : 'not-allowed',
+                    cursor: selectedAnimal && selectedParts.length > 0 ? 'pointer' : 'not-allowed',
                     width: '100%',
-                    boxShadow: selectedAnimal && selectedPart 
-                      ? '0 8px 25px rgba(255, 107, 107, 0.3)' 
+                    boxShadow: selectedAnimal && selectedParts.length > 0
+                      ? '0 8px 25px rgba(255, 107, 107, 0.3)'
                       : '0 4px 12px rgba(108, 117, 125, 0.2)',
                     transition: 'all 0.3s ease',
-                    transform: selectedAnimal && selectedPart ? 'scale(1)' : 'scale(0.98)',
+                    transform: selectedAnimal && selectedParts.length > 0 ? 'scale(1)' : 'scale(0.98)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -493,7 +664,7 @@ export default function RecordPage() {
                   }}
                 >
                   <span style={{ fontSize: '20px' }}>💾</span>
-                  記録を保存する
+                  記録を保存する ({selectedParts.length}個の部位)
                 </button>
               </>
             ) : (

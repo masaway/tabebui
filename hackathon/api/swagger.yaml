@@ -137,12 +137,15 @@ paths:
             schema:
               type: object
               required:
-                - animal_part_id
+                - animal_part_ids
               properties:
-                animal_part_id:
-                  type: integer
-                  description: 部位ID
-                  example: 15
+                animal_part_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: 部位IDの配列（複数選択可能）
+                  example: [15, 16, 17]
+                  minItems: 1
                 restaurant_name:
                   type: string
                   description: レストラン名
@@ -183,25 +186,115 @@ paths:
                   data:
                     type: object
                     properties:
-                      id:
+                      session_id:
                         type: integer
-                        example: 102
-                      animal_part_id:
-                        type: integer
-                        example: 15
-                      restaurant_name:
-                        type: string
-                        example: "焼肉やまちゃん"
-                      eaten_at:
-                        type: string
-                        format: date-time
-                        example: "2024-09-01T18:30:00Z"
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-09-01T19:00:00Z"
+                        example: 5
+                        description: 作成された食事セッションID
+                      records:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 102
+                            animal_part_id:
+                              type: integer
+                              example: 15
+                            session_id:
+                              type: integer
+                              example: 5
+                            eaten_at:
+                              type: string
+                              format: date-time
+                              example: "2024-09-01T18:30:00Z"
+                            created_at:
+                              type: string
+                              format: date-time
+                              example: "2024-09-01T19:00:00Z"
+                        description: 作成された食事記録の配列（複数部位分）
         '400':
           $ref: '#/components/responses/InvalidPartId'
+
+  /api/eating-sessions:
+    get:
+      summary: 食事セッション一覧を取得
+      description: ユーザーの食事セッション一覧をページング付きで取得
+      tags:
+        - 食事セッション
+      parameters:
+        - name: page
+          in: query
+          description: ページ番号
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 1ページあたりの件数
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EatingSessionWithParts'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /api/eating-sessions/{sessionId}:
+    get:
+      summary: 食事セッション詳細を取得
+      description: 指定されたセッションの詳細情報と含まれる部位記録を取得
+      tags:
+        - 食事セッション
+      parameters:
+        - name: sessionId
+          in: path
+          description: セッションID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        $ref: '#/components/schemas/EatingSession'
+                      records:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EatingRecordWithPart'
+        '404':
+          description: セッションが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/animal-parts:
     get:
@@ -409,6 +502,98 @@ components:
           minimum: 1
           maximum: 5
           example: 3
+
+    EatingSession:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        user_id:
+          type: integer
+          example: 1
+        restaurant_name:
+          type: string
+          example: "焼肉やまちゃん"
+        eaten_at:
+          type: string
+          format: date-time
+          example: "2024-09-01T18:30:00Z"
+        memo:
+          type: string
+          example: "美味しかった！"
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        photo_url:
+          type: string
+          format: uri
+          example: "https://example.com/photo.jpg"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-09-01T19:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-09-01T19:00:00Z"
+
+    EatingSessionWithParts:
+      allOf:
+        - $ref: '#/components/schemas/EatingSession'
+        - type: object
+          properties:
+            parts_count:
+              type: integer
+              example: 3
+              description: セッションに含まれる部位数
+            parts_list:
+              type: string
+              example: "ハラミ,サーロイン,タン"
+              description: セッションに含まれる部位名のリスト
+
+    EatingRecordWithPart:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 102
+        user_id:
+          type: integer
+          example: 1
+        animal_part_id:
+          type: integer
+          example: 15
+        session_id:
+          type: integer
+          example: 5
+        eaten_at:
+          type: string
+          format: date-time
+          example: "2024-09-01T18:30:00Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-09-01T19:00:00Z"
+        animal_type:
+          type: string
+          enum: [beef, pork, chicken]
+          example: "beef"
+        part_category:
+          type: string
+          enum: [meat, organ]
+          example: "organ"
+        part_name:
+          type: string
+          example: "harami"
+        part_name_jp:
+          type: string
+          example: "ハラミ"
+        description:
+          type: string
+          example: "横隔膜の薄い部分、柔らかい"
 
     Pagination:
       type: object
