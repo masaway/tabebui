@@ -89,3 +89,4 @@ src/
 - 初期データは `src/db/init.sql` で投入
 - フロントエンドの変更はホットリロード対応
 - バックエンドの変更はuvicorn --reload対応
+- コンシェルジュ機能を動かすにはサーバー側で `GEMINI_API_KEY` を設定し、必要に応じて `GEMINI_MODEL_NAME` と `CHAT_HISTORY_LIMIT` を調整（FastAPIコンテナ環境変数）。`src/.env` に `gemini-api-key=<APIキー>` を置くと自動で読み込まれます。Geminiクライアントは `google-generativeai` パッケージ。

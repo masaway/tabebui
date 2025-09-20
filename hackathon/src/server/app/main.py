@@ -1,6 +1,7 @@
 import os
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
+from pathlib import Path as FilePath
 
 import pymysql
 from fastapi import FastAPI, Query, Path, HTTPException
@@ -64,6 +65,70 @@ class EatingRecordResponse(BaseModel):
     created_at: datetime
 
 
+DEFAULT_CONCIERGE_PROMPT = (
+    "あなたは『たべぶい』アプリの食べ歩きコンシェルジュです。"
+    "ユーザーの好みや未制覇の部位を想像しながら、"
+    "親しみやすく丁寧な日本語で短く回答してください。"
+    "必要に応じて部位の特徴やおすすめの食べ方、"
+    "エリア情報に基づいた提案を加えてください。"
+)
+
+_CHAT_HISTORY_FALLBACK = 12
+try:
+    MAX_CHAT_HISTORY = int(os.getenv('CHAT_HISTORY_LIMIT', str(_CHAT_HISTORY_FALLBACK)))
+except ValueError:
+    MAX_CHAT_HISTORY = _CHAT_HISTORY_FALLBACK
+
+GEMINI_MODEL_NAME = os.getenv('GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+
+
+ENV_FALLBACK_KEY = 'gemini-api-key'
+_RESOLVED_PATH = FilePath(__file__).resolve()
+ENV_FALLBACK_PATHS = []
+for depth in (0, 1, 2, 3):
+    try:
+        parent = _RESOLVED_PATH.parents[depth]
+    except IndexError:
+        continue
+    candidate = parent / '.env'
+    if candidate not in ENV_FALLBACK_PATHS:
+        ENV_FALLBACK_PATHS.append(candidate)
+
+
+def load_gemini_api_key() -> Optional[str]:
+    """環境変数またはsrc/.envのgemini-api-keyからAPIキーを取得"""
+    env_value = os.getenv('GEMINI_API_KEY')
+    if env_value:
+        return env_value
+
+    try:
+        for env_path in ENV_FALLBACK_PATHS:
+            if not env_path.is_file():
+                continue
+            for raw_line in env_path.read_text(encoding='utf-8').splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                if key.strip().lower() == ENV_FALLBACK_KEY:
+                    return value.strip() or None
+    except Exception:
+        # 読み込み失敗時は環境変数優先のため無視
+        pass
+
+    return None
+
+
+class ChatMessage(BaseModel):
+    role: Literal['user', 'assistant']
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = []
+    system_prompt: Optional[str] = None
+
 
 
 # CORS (dev): allow Vite dev server origin
@@ -120,6 +185,99 @@ def get_db_connection():
         connect_timeout=3,
         cursorclass=pymysql.cursors.DictCursor
     )
+
+
+
+def call_gemini_api(message: str, history: List[ChatMessage], system_prompt: Optional[str] = None):
+    """Gemini APIを呼び出して応答を生成"""
+    api_key = load_gemini_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured.")
+
+    try:
+        import google.generativeai as genai
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="google-generativeai package is not installed on the server."
+        ) from exc
+
+    prompt = system_prompt or DEFAULT_CONCIERGE_PROMPT
+    genai.configure(api_key=api_key)
+
+    model = genai.GenerativeModel(GEMINI_MODEL_NAME, system_instruction=prompt)
+
+    sanitized_history = [msg for msg in history if msg.role in {"user", "assistant"}]
+    trimmed_history = sanitized_history[-MAX_CHAT_HISTORY:] if MAX_CHAT_HISTORY > 0 else sanitized_history
+
+    contents = []
+    for past in trimmed_history:
+        role = "user" if past.role == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": past.content}]})
+    contents.append({"role": "user", "parts": [{"text": message}]})
+
+    try:
+        response = model.generate_content(contents)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Gemini API error: {exc}") from exc
+
+    text = getattr(response, "text", None)
+    if not text and getattr(response, "candidates", None):
+        for candidate in response.candidates:
+            candidate_content = getattr(candidate, "content", None)
+            if not candidate_content:
+                continue
+            parts = getattr(candidate_content, "parts", None)
+            if not parts:
+                continue
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    text = part_text
+                    break
+            if text:
+                break
+
+    if not text:
+        raise HTTPException(status_code=500, detail="Gemini API returned no content.")
+
+    usage = getattr(response, "usage_metadata", None)
+    return text.strip(), trimmed_history, usage
+
+
+@app.post("/api/chat/message", response_model=dict)
+def post_chat_message(request: ChatRequest):
+    """Geminiを利用したチャット応答を生成"""
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="message must not be empty.")
+
+    reply, trimmed_history, usage = call_gemini_api(
+        message=request.message,
+        history=request.history,
+        system_prompt=request.system_prompt,
+    )
+
+    updated_history = [msg.dict() for msg in trimmed_history]
+    updated_history.append({"role": "user", "content": request.message})
+    updated_history.append({"role": "assistant", "content": reply})
+
+    data = {
+        "reply": reply,
+        "model": GEMINI_MODEL_NAME,
+        "history": updated_history,
+    }
+
+    if usage:
+        data["usage"] = {
+            "prompt_tokens": getattr(usage, "prompt_token_count", None),
+            "candidates_tokens": getattr(usage, "candidates_token_count", None),
+            "total_tokens": getattr(usage, "total_token_count", None),
+        }
+
+    return {
+        "success": True,
+        "data": data,
+    }
 
 
 @app.get("/api/animal-parts", response_model=dict)
