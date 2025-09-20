@@ -1,5 +1,5 @@
 import os
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 from datetime import datetime
 from pathlib import Path as FilePath
 
@@ -96,6 +96,13 @@ for depth in (0, 1, 2, 3):
         ENV_FALLBACK_PATHS.append(candidate)
 
 
+ANIMAL_LABELS: Dict[str, str] = {
+    "beef": "🐄 牛",
+    "pork": "🐷 豚",
+    "chicken": "🐔 鶏",
+}
+
+
 def load_gemini_api_key() -> Optional[str]:
     """環境変数またはsrc/.envのgemini-api-keyからAPIキーを取得"""
     env_value = os.getenv('GEMINI_API_KEY')
@@ -117,7 +124,104 @@ def load_gemini_api_key() -> Optional[str]:
         # 読み込み失敗時は環境変数優先のため無視
         pass
 
+
     return None
+
+
+def build_concierge_context(user_id: int = 1) -> Optional[str]:
+    """ユーザーの制覇状況などをGeminiへの文脈として整形"""
+    try:
+        conn = get_db_connection()
+    except Exception:
+        return None
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT animal_type, COUNT(*) AS total
+                FROM animal_parts
+                GROUP BY animal_type
+                """
+            )
+            totals = {row["animal_type"]: row["total"] for row in cur.fetchall()}
+
+            cur.execute(
+                """
+                SELECT ap.animal_type, COUNT(DISTINCT ap.id) AS eaten
+                FROM eating_records er
+                JOIN animal_parts ap ON ap.id = er.animal_part_id
+                WHERE er.user_id = %s
+                GROUP BY ap.animal_type
+                """,
+                (user_id,)
+            )
+            eaten = {row["animal_type"]: row["eaten"] for row in cur.fetchall()}
+
+            cur.execute(
+                """
+                SELECT restaurant_name, eaten_at
+                FROM eating_sessions
+                WHERE user_id = %s
+                ORDER BY eaten_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                (user_id,),
+            )
+            recent_session = cur.fetchone()
+
+            cur.execute(
+                """
+                SELECT ap.part_name_jp, ap.animal_type
+                FROM animal_parts ap
+                LEFT JOIN eating_records er
+                    ON er.animal_part_id = ap.id AND er.user_id = %s
+                WHERE er.id IS NULL
+                ORDER BY ap.difficulty_level DESC, ap.id
+                LIMIT 5
+                """,
+                (user_id,),
+            )
+            missing_parts = cur.fetchall()
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+    if not totals:
+        return None
+
+    progress_lines = []
+    for animal_type, total in totals.items():
+        label = ANIMAL_LABELS.get(animal_type, animal_type)
+        eaten_count = eaten.get(animal_type, 0)
+        completion = 0
+        if total:
+            completion = int(round((eaten_count / total) * 100))
+        remaining = total - eaten_count
+        progress_lines.append(
+            f"{label}: {eaten_count}/{total} (制覇率 {completion}%・残り {max(remaining, 0)} 部位)"
+        )
+
+    context_lines = []
+    if progress_lines:
+        context_lines.append("【現在の制覇状況】")
+        context_lines.extend(progress_lines)
+
+    if missing_parts:
+        context_lines.append("【未制覇で提案したい部位候補】")
+        for row in missing_parts:
+            label = ANIMAL_LABELS.get(row["animal_type"], row["animal_type"])
+            context_lines.append(f"- {label}: {row['part_name_jp']}")
+
+    if recent_session:
+        restaurant = recent_session.get("restaurant_name") or "不明な店舗"
+        eaten_at = recent_session.get("eaten_at")
+        date_label = eaten_at.strftime("%Y-%m-%d") if eaten_at else "訪問日不明"
+        context_lines.append("【最近の食事】")
+        context_lines.append(f"- {date_label} に {restaurant} を訪問")
+
+    return "\n".join(context_lines) if context_lines else None
 
 
 class ChatMessage(BaseModel):
@@ -189,7 +293,12 @@ def get_db_connection():
 
 
 
-def call_gemini_api(message: str, history: List[ChatMessage], system_prompt: Optional[str] = None):
+def call_gemini_api(
+    message: str,
+    history: List[ChatMessage],
+    system_prompt: Optional[str] = None,
+    extra_context: Optional[str] = None,
+):
     """Gemini APIを呼び出して応答を生成"""
     api_key = load_gemini_api_key()
     if not api_key:
@@ -204,6 +313,9 @@ def call_gemini_api(message: str, history: List[ChatMessage], system_prompt: Opt
         ) from exc
 
     prompt = system_prompt or DEFAULT_CONCIERGE_PROMPT
+    if extra_context:
+        prompt = f"{prompt}\n\n### ユーザーコンテキスト\n{extra_context}"
+
     genai.configure(api_key=api_key)
 
     model = genai.GenerativeModel(GEMINI_MODEL_NAME, system_instruction=prompt)
@@ -252,10 +364,13 @@ def post_chat_message(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="message must not be empty.")
 
+    concierge_context = build_concierge_context(user_id=1)
+
     reply, trimmed_history, usage = call_gemini_api(
         message=request.message,
         history=request.history,
         system_prompt=request.system_prompt,
+        extra_context=concierge_context,
     )
 
     updated_history = [msg.dict() for msg in trimmed_history]
