@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import PageLayout from '../components/PageLayout'
+import { useAuth } from '../contexts/AuthContext'
+import { progressAPI } from '../utils/api'
 
 export default function PartsPage() {
   const [selectedAnimal, setSelectedAnimal] = useState('beef')
@@ -9,6 +11,7 @@ export default function PartsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [viewFilter, setViewFilter] = useState('all') // 'all', 'conquered', 'unconquered'
+  const { dbUser } = useAuth()
 
   // --- Color Palette ---
   const colors = {
@@ -25,10 +28,15 @@ export default function PartsPage() {
   // APIからデータを取得
   useEffect(() => {
     const fetchProgressData = async () => {
+      if (!dbUser?.id) {
+        setError('ユーザー情報の取得に失敗しました')
+        setLoading(false)
+        return
+      }
+
       try {
         setLoading(true)
-        const response = await fetch('/api/user-progress?user_id=1')
-        const result = await response.json()
+        const result = await progressAPI.getUserProgress(dbUser.id)
 
         if (result.success) {
           setProgressData(result.data)
@@ -44,7 +52,7 @@ export default function PartsPage() {
     }
 
     fetchProgressData()
-  }, [])
+  }, [dbUser])
 
   const animalNames = {
     beef: '牛',

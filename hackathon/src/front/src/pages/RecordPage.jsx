@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageLayout from '../components/PageLayout'
+import { useAuth } from '../contexts/AuthContext'
+import { recordAPI } from '../utils/api'
 
 export default function RecordPage() {
   const [selectedAnimal, setSelectedAnimal] = useState('')
@@ -12,6 +14,7 @@ export default function RecordPage() {
   const [roundNumber, setRoundNumber] = useState(1)
   const [animalParts, setAnimalParts] = useState([])
   const [loading, setLoading] = useState(false)
+  const { dbUser } = useAuth()
   const navigate = useNavigate()
 
   const animalData = {
@@ -84,6 +87,11 @@ export default function RecordPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (selectedAnimal && selectedParts.length > 0) {
+      if (!dbUser?.id) {
+        alert('ユーザー情報の取得に失敗しました。ログインし直してください。')
+        return
+      }
+
       // 記録データをまとめる
       const recordData = {
         animal_part_ids: selectedParts.map(part => part.id),
@@ -95,28 +103,14 @@ export default function RecordPage() {
       }
 
       try {
-        const response = await fetch('/api/eating-records', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(recordData)
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          console.log('記録成功:', result)
-          const partNames = selectedParts.map(p => p.name).join('、')
-          alert(`${animalData[selectedAnimal].name}の${partNames}を記録しました！`)
-          navigate('/')
-        } else {
-          const error = await response.json()
-          console.error('記録エラー:', error)
-          alert('記録の保存に失敗しました。')
-        }
+        const result = await recordAPI.createRecord(recordData, dbUser.id)
+        console.log('記録成功:', result)
+        const partNames = selectedParts.map(p => p.name).join('、')
+        alert(`${animalData[selectedAnimal].name}の${partNames}を記録しました！`)
+        navigate('/')
       } catch (error) {
         console.error('API呼び出しエラー:', error)
-        alert('記録の保存中にエラーが発生しました。')
+        alert(error.message || '記録の保存中にエラーが発生しました。')
       }
     }
   }

@@ -128,7 +128,7 @@ def load_gemini_api_key() -> Optional[str]:
     return None
 
 
-def build_concierge_context(user_id: int = 1) -> Optional[str]:
+def build_concierge_context(user_id: int) -> Optional[str]:
     """ユーザーの制覇状況などをGeminiへの文脈として整形"""
     try:
         conn = get_db_connection()
@@ -235,6 +235,23 @@ class ChatRequest(BaseModel):
     system_prompt: Optional[str] = None
 
 
+class UserCreateRequest(BaseModel):
+    google_id: str
+    email: str
+    name: str
+    profile_image_url: Optional[str] = None
+
+
+class UserResponse(BaseModel):
+    id: int
+    google_id: str
+    email: str
+    name: str
+    profile_image_url: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
 
 # CORS (dev): allow Vite dev server origin
 origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
@@ -257,6 +274,98 @@ def health():
     return {"status": "ok"}
 
 
+@app.post("/api/users", response_model=dict)
+def create_or_update_user(user_request: UserCreateRequest):
+    """ユーザーの作成または更新（Google認証後）"""
+    try:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # 既存ユーザーをチェック
+                cur.execute("SELECT * FROM users WHERE google_id = %s", (user_request.google_id,))
+                existing_user = cur.fetchone()
+
+                if existing_user:
+                    # 既存ユーザーの情報を更新
+                    update_query = """
+                    UPDATE users SET
+                        email = %s,
+                        name = %s,
+                        profile_image_url = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE google_id = %s
+                    """
+                    cur.execute(update_query, (
+                        user_request.email,
+                        user_request.name,
+                        user_request.profile_image_url,
+                        user_request.google_id
+                    ))
+                    conn.commit()
+
+                    # 更新されたユーザー情報を取得
+                    cur.execute("SELECT * FROM users WHERE google_id = %s", (user_request.google_id,))
+                    user = cur.fetchone()
+
+                    return {
+                        "success": True,
+                        "data": user,
+                        "message": "ユーザー情報を更新しました"
+                    }
+                else:
+                    # 新規ユーザーを作成
+                    insert_query = """
+                    INSERT INTO users (google_id, email, name, profile_image_url)
+                    VALUES (%s, %s, %s, %s)
+                    """
+                    cur.execute(insert_query, (
+                        user_request.google_id,
+                        user_request.email,
+                        user_request.name,
+                        user_request.profile_image_url
+                    ))
+                    conn.commit()
+
+                    # 作成されたユーザー情報を取得
+                    cur.execute("SELECT * FROM users WHERE google_id = %s", (user_request.google_id,))
+                    user = cur.fetchone()
+
+                    return {
+                        "success": True,
+                        "data": user,
+                        "message": "新規ユーザーを作成しました"
+                    }
+        finally:
+            conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.get("/api/users/{google_id}", response_model=dict)
+def get_user_by_google_id(google_id: str):
+    """Google IDでユーザー情報を取得"""
+    try:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM users WHERE google_id = %s", (google_id,))
+                user = cur.fetchone()
+
+                if not user:
+                    raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+                return {
+                    "success": True,
+                    "data": user
+                }
+        finally:
+            conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
 @app.get("/db-version")
 def db_version():
     try:
@@ -277,6 +386,7 @@ def db_version():
         return {"connected": True, "version": version}
     except Exception as e:
         return {"connected": False, "error": str(e)}
+
 
 
 def get_db_connection():
@@ -359,12 +469,12 @@ def call_gemini_api(
 
 
 @app.post("/api/chat/message", response_model=dict)
-def post_chat_message(request: ChatRequest):
+def post_chat_message(request: ChatRequest, user_id: int = Query(..., description="ログインユーザーのID")):
     """Geminiを利用したチャット応答を生成"""
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="message must not be empty.")
 
-    concierge_context = build_concierge_context(user_id=1)
+    concierge_context = build_concierge_context(user_id=user_id)
 
     reply, trimmed_history, usage = call_gemini_api(
         message=request.message,
@@ -474,7 +584,7 @@ def get_animal_parts_by_type(
 
 
 @app.post("/api/eating-records", response_model=dict)
-def create_eating_records(record_request: EatingRecordRequest):
+def create_eating_records(record_request: EatingRecordRequest, user_id: int = Query(..., description="ログインユーザーのID")):
     """複数の部位を一度にセッションとして記録"""
     if not record_request.animal_part_ids:
         raise HTTPException(status_code=400, detail="部位IDが指定されていません")
@@ -495,8 +605,7 @@ def create_eating_records(record_request: EatingRecordRequest):
                 if invalid_ids:
                     raise HTTPException(status_code=400, detail=f"存在しない部位ID: {list(invalid_ids)}")
 
-                # 仮のユーザーID（本来は認証から取得）
-                user_id = 1
+                # 認証されたユーザーIDを使用
                 eaten_at = record_request.eaten_at or datetime.now()
 
                 # 食事セッションを作成
@@ -565,6 +674,7 @@ def create_eating_records(record_request: EatingRecordRequest):
 
 @app.get("/api/eating-sessions", response_model=dict)
 def get_eating_sessions(
+    user_id: int = Query(..., description="ログインユーザーのID"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100)
 ):
@@ -573,9 +683,7 @@ def get_eating_sessions(
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                # 仮のユーザーID（本来は認証から取得）
-                user_id = 1
-
+                # 認証されたユーザーIDを使用
                 offset = (page - 1) * per_page
 
                 # セッション一覧を取得
@@ -618,15 +726,13 @@ def get_eating_sessions(
 
 
 @app.get("/api/eating-sessions/{session_id}", response_model=dict)
-def get_eating_session_detail(session_id: int):
+def get_eating_session_detail(session_id: int, user_id: int = Query(..., description="ログインユーザーのID")):
     """特定の食事セッションの詳細を取得"""
     try:
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                # 仮のユーザーID（本来は認証から取得）
-                user_id = 1
-
+                # 認証されたユーザーIDを使用
                 # セッション詳細を取得
                 session_query = """
                 SELECT * FROM eating_sessions
@@ -666,7 +772,7 @@ def get_eating_session_detail(session_id: int):
 
 
 @app.get("/api/user-progress", response_model=dict)
-def get_user_progress(user_id: int = Query(1)):
+def get_user_progress(user_id: int = Query(..., description="ログインユーザーのID")):
     """ユーザーの部位制覇状況を取得"""
     try:
         conn = get_db_connection()
@@ -768,7 +874,7 @@ def get_user_progress(user_id: int = Query(1)):
 @app.get("/api/user-progress/{animal_type}", response_model=dict)
 def get_user_progress_by_animal(
     animal_type: str = Path(..., regex="^(beef|pork|chicken)$"),
-    user_id: int = Query(1)
+    user_id: int = Query(..., description="ログインユーザーのID")
 ):
     """特定動物のユーザー制覇状況を詳細取得"""
     try:
@@ -868,7 +974,7 @@ def get_user_progress_by_animal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 @app.get("/api/dashboard-stats", response_model=dict)
-def get_dashboard_stats(user_id: int = Query(1)):
+def get_dashboard_stats(user_id: int = Query(..., description="ログインユーザーのID")):
     """ダッシュボード用の統計情報を取得"""
     try:
         conn = get_db_connection()

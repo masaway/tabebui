@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import PageLayout from '../components/PageLayout'
+import { useAuth } from '../contexts/AuthContext'
+import { chatAPI } from '../utils/api'
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
@@ -11,11 +13,17 @@ export default function ConciergePage() {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const { dbUser } = useAuth()
 
   const handleSendMessage = async (event) => {
     event.preventDefault()
     const trimmed = inputMessage.trim()
     if (!trimmed || isLoading) return
+
+    if (!dbUser?.id) {
+      setError('ユーザー情報の取得に失敗しました。ログインし直してください。')
+      return
+    }
 
     const userMessage = { role: 'user', content: trimmed }
     const nextHistory = [...messages, userMessage].map((msg) => ({
@@ -29,20 +37,7 @@ export default function ConciergePage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/chat/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: trimmed,
-          history: nextHistory
-        })
-      })
-
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        const detail = payload?.detail || 'コンシェルジュから応答を取得できませんでした。'
-        throw new Error(detail)
-      }
+      const payload = await chatAPI.sendMessage(trimmed, dbUser.id, nextHistory)
 
       const reply = payload?.data?.reply
       const historyFromServer = Array.isArray(payload?.data?.history) ? payload.data.history : null

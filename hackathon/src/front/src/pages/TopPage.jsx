@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageLayout from '../components/PageLayout'
 import { useAuth } from '../contexts/AuthContext'
+import { progressAPI } from '../utils/api'
 
 const styles = {
   container: {
@@ -278,7 +279,7 @@ export default function TopPage() {
   const [dashboardData, setDashboardData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { currentUser, logout } = useAuth()
+  const { currentUser, dbUser, logout } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -294,10 +295,15 @@ export default function TopPage() {
   // APIからダッシュボード統計を取得
   useEffect(() => {
     const fetchDashboardStats = async () => {
+      if (!dbUser?.id) {
+        setError('ユーザー情報の取得に失敗しました')
+        setLoading(false)
+        return
+      }
+
       try {
         setLoading(true)
-        const response = await fetch('/api/dashboard-stats?user_id=1')
-        const result = await response.json()
+        const result = await progressAPI.getDashboardStats(dbUser.id)
 
         if (result.success) {
           setDashboardData(result.data)
@@ -313,7 +319,7 @@ export default function TopPage() {
     }
 
     fetchDashboardStats()
-  }, [])
+  }, [dbUser])
 
   // 時間差を表示用に計算する関数
   const getTimeAgo = (dateString) => {
