@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import PageLayout from '../components/PageLayout'
+import { useAuth } from '../contexts/AuthContext'
 
 const styles = {
   container: {
@@ -277,6 +278,18 @@ export default function TopPage() {
   const [dashboardData, setDashboardData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const { currentUser, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate('/login')
+    } catch (error) {
+      console.error('ログアウトエラー:', error)
+      alert('ログアウトに失敗しました')
+    }
+  }
 
   // APIからダッシュボード統計を取得
   useEffect(() => {
@@ -378,8 +391,38 @@ export default function TopPage() {
       <div style={styles.container}>
         {/* Welcome Section */}
         <section style={styles.welcomeSection}>
-          <h1 style={styles.welcomeTitle}>おかえりなさい！</h1>
-          <p style={styles.welcomeSubtitle}>今日も美味しい部位を制覇していきましょう</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+            <div>
+              <h1 style={styles.welcomeTitle}>おかえりなさい！</h1>
+              {currentUser && (
+                <p style={{ margin: '0 0 5px 0', fontSize: '14px', opacity: 0.9 }}>
+                  {currentUser.displayName || currentUser.email}
+                </p>
+              )}
+              <p style={styles.welcomeSubtitle}>今日も美味しい部位を制覇していきましょう</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: 'white',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = 'rgba(255,255,255,0.3)'
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = 'rgba(255,255,255,0.2)'
+              }}
+            >
+              ログアウト
+            </button>
+          </div>
         </section>
 
         {/* Stats Row */}
