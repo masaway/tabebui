@@ -1,10 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import PageLayout from '../components/PageLayout'
 
 export default function PartsPage() {
   const [selectedAnimal, setSelectedAnimal] = useState('beef')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedPart, setSelectedPart] = useState(null)
+  const [progressData, setProgressData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [viewFilter, setViewFilter] = useState('all') // 'all', 'conquered', 'unconquered'
 
   // --- Color Palette ---
   const colors = {
@@ -18,49 +22,40 @@ export default function PartsPage() {
     progressBarBg: '#f5f5f5',
   }
 
-  const animalData = {
-    beef: {
-      name: '牛',
-      illustration: { color: '#d2a679' },
-      parts: [
-        { name: 'ロース', isConquered: true, conqueredDate: '2023-10-01', description: 'きめの細かい肉質で柔らかい部位。脂肪がほど良く霜降り状に分散し、コクのある風味が楽しめる。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ロースのイラスト' },
-        { name: 'ヒレ', isConquered: false, conqueredDate: null, description: '極めてきめの細かい柔らかな部位。脂肪が少なく、上品な風味が持ち味。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ヒレのイラスト' },
-        { name: 'サーロイン', isConquered: true, conqueredDate: '2023-11-20', description: 'きめが細かく柔らかい、牛肉の最高部位のひとつ。ステーキに最適。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=サーロインのイラスト' },
-        { name: 'リブロース', isConquered: false, conqueredDate: null, description: '赤身と脂身のバランスが良く、コクがあって風味の良い部位。ローストビーフやステーキに最適。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=リブロースのイラスト' },
-        { name: 'カルビ', isConquered: true, conqueredDate: '2023-09-15', description: '赤身と脂肪が層になった三枚肉。濃厚な風味が特徴で、焼肉や牛丼、すき焼に向いている。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=カルビのイラスト' },
-        { name: 'ハラミ', isConquered: false, conqueredDate: null, description: '赤身肉に近い肉質と風味。網焼きやカレー、シチューなどの煮込み料理に向いている。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ハラミのイラスト' },
-        { name: 'タン', isConquered: true, conqueredDate: '2024-01-05', description: 'つけ根は脂肪が多くて柔らかく、舌尖はやや筋っぽい。塩焼きやシチューに利用される。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=タンのイラスト' },
-        { name: 'ミスジ', isConquered: false, conqueredDate: null, description: '特徴は準備中です。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ミスジのイラスト' },
-      ]
-    },
-    pork: {
-      name: '豚',
-      illustration: { color: '#f0aabf' },
-      parts: [
-        { name: 'ロース', isConquered: true, conqueredDate: '2023-10-02', description: 'きめ細かさと脂身のおいしさが持ち味。とんかつやポークソテーに最適。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ロースのイラスト' },
-        { name: 'ヒレ', isConquered: false, conqueredDate: null, description: '豚肉の中で最もきめが細かく柔らかい。上品で淡白な味で、かつやソテーなど油を使った料理に適している。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ヒレのイラスト' },
-        { name: 'バラ', isConquered: true, conqueredDate: '2023-11-21', description: '赤身と脂身が三層になった三枚肉。角煮、シチュー、酢豚、炒め物などに適している。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=バラのイラスト' },
-        { name: 'カタ', isConquered: false, conqueredDate: null, description: '肉のきめはやや粗い。薄切りは焼肉や炒め物、角切りは煮込み料理に適している。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=カタのイラスト' },
-        { name: 'モモ', isConquered: false, conqueredDate: null, description: '脂肪が少なくきめが細かい赤身肉。炒め物、煮込み、ローストポークなどに適している。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=モモのイラスト' },
-        { name: 'トンソク', isConquered: true, conqueredDate: '2024-02-10', description: 'ほとんどがゼラチン質で、トロリとした舌ざわり。甘辛味の煮物にするのが定番。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=トンソクのイラスト' },
-        { name: 'ホルモン', isConquered: false, conqueredDate: null, description: '特徴は準備中です。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ホルモンのイラスト' },
-        { name: 'タン', isConquered: true, conqueredDate: '2024-01-06', description: '特徴は準備中です。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=タンのイラスト' },
-      ]
-    },
-    chicken: {
-      name: '鳥',
-      illustration: { color: '#f5d66a' },
-      parts: [
-        { name: 'モモ', isConquered: true, conqueredDate: '2023-10-03', description: 'むね肉に比べてコクがある。照り焼き、ロースト、フライ、から揚げなどに適している。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=モモのイラスト' },
-        { name: 'ムネ', isConquered: false, conqueredDate: null, description: '柔らかくて脂肪が少なく、味は淡白。から揚げやフライ、焼き物や炒め物に適している。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ムネのイラスト' },
-        { name: 'ササミ', isConquered: true, conqueredDate: '2023-11-22', description: '低脂肪で肉質は柔らかく、あっさりとした味。サラダや和え物、新鮮なものは刺身にもされる。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ササミのイラスト' },
-        { name: '手羽元', isConquered: false, conqueredDate: null, description: 'ゼラチン質で脂肪が多く、コクがある。水炊きやカレーなどの煮込み料理、揚げ物や焼き物に向いている。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=手羽元のイラスト' },
-        { name: '手羽先', isConquered: true, conqueredDate: '2023-12-25', description: 'ゼラチン質で脂肪が多く、コクがある。水炊きやカレーなどの煮込み料理、揚げ物や焼き物に向いている。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=手羽先のイラスト' },
-        { name: 'ボンジリ', isConquered: false, conqueredDate: null, description: '尾骨の周りの肉。脂がのってジューシーで、とろけるような口当たり。塩焼きやタレ焼きがおすすめ。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ボンジリのイラスト' },
-        { name: 'ハツ', isConquered: false, conqueredDate: null, description: '独特の歯ざわりがある。塩焼き、揚げ物、炒め物などに適している。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=ハツのイラスト' },
-        { name: 'レバー', isConquered: true, conqueredDate: '2024-01-07', description: '脂肪が少なく高タンパク。串焼きや煮物、揚げ物、炒め物、レバーペーストなどに向いている。', imageUrl: 'https://placehold.co/300x200/e0e0e0/7f7f7f?text=レバーのイラスト' },
-      ]
+  // APIからデータを取得
+  useEffect(() => {
+    const fetchProgressData = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/user-progress?user_id=1')
+        const result = await response.json()
+
+        if (result.success) {
+          setProgressData(result.data)
+        } else {
+          throw new Error('データの取得に失敗しました')
+        }
+      } catch (err) {
+        setError(err.message)
+        console.error('API Error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchProgressData()
+  }, [])
+
+  const animalNames = {
+    beef: '牛',
+    pork: '豚',
+    chicken: '鳥'
+  }
+
+  const animalColors = {
+    beef: '#d2a679',
+    pork: '#f0aabf',
+    chicken: '#f5d66a'
   }
 
   const handlePartClick = (part) => {
@@ -73,10 +68,59 @@ export default function PartsPage() {
     setSelectedPart(null)
   }
 
-  const currentAnimalParts = animalData[selectedAnimal].parts;
-  const conqueredCount = currentAnimalParts.filter(p => p.isConquered).length;
-  const totalCount = currentAnimalParts.length;
-  const percentage = totalCount > 0 ? Math.floor((conqueredCount / totalCount) * 100) : 0;
+  // ローディング中の表示
+  if (loading) {
+    return (
+      <PageLayout title="食べた部位ページ" showBackButton={true}>
+        <div style={{ backgroundColor: colors.base, color: colors.text, padding: '24px', minHeight: '100vh', textAlign: 'center' }}>
+          <div style={{ marginTop: '100px' }}>
+            <div style={{ fontSize: '18px', color: colors.text }}>データを読み込み中...</div>
+          </div>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // エラー時の表示
+  if (error) {
+    return (
+      <PageLayout title="食べた部位ページ" showBackButton={true}>
+        <div style={{ backgroundColor: colors.base, color: colors.text, padding: '24px', minHeight: '100vh', textAlign: 'center' }}>
+          <div style={{ marginTop: '100px' }}>
+            <div style={{ fontSize: '18px', color: colors.primary }}>エラーが発生しました</div>
+            <div style={{ fontSize: '14px', marginTop: '8px' }}>{error}</div>
+          </div>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // データが読み込まれていない場合
+  if (!progressData) {
+    return (
+      <PageLayout title="食べた部位ページ" showBackButton={true}>
+        <div style={{ backgroundColor: colors.base, color: colors.text, padding: '24px', minHeight: '100vh', textAlign: 'center' }}>
+          <div style={{ marginTop: '100px' }}>
+            <div style={{ fontSize: '18px', color: colors.text }}>データがありません</div>
+          </div>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // 現在選択されている動物のデータを取得
+  const currentAnimalData = progressData.progress[selectedAnimal]
+  const currentStats = progressData.stats[selectedAnimal]
+
+  // フィルタリング関数
+  const filterParts = (conquered, unconquered) => {
+    if (viewFilter === 'conquered') {
+      return [conquered, []]
+    } else if (viewFilter === 'unconquered') {
+      return [[], unconquered]
+    }
+    return [conquered, unconquered]
+  }
 
   return (
     <PageLayout title="食べた部位ページ" showBackButton={true}>
@@ -85,12 +129,12 @@ export default function PartsPage() {
         <div style={{ marginBottom: 24, textAlign: 'center' }}>
           <h2>動物を選択</h2>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', padding: '16px 0' }}>
-            {Object.entries(animalData).map(([key, animal]) => (
-              <div 
-                key={key} 
-                onClick={() => setSelectedAnimal(key)} 
-                style={{ 
-                  cursor: 'pointer', 
+            {Object.entries(animalNames).map(([key, name]) => (
+              <div
+                key={key}
+                onClick={() => setSelectedAnimal(key)}
+                style={{
+                  cursor: 'pointer',
                   textAlign: 'center',
                   border: selectedAnimal === key ? `3px solid ${colors.primary}` : '3px solid transparent',
                   borderRadius: '50%',
@@ -101,7 +145,7 @@ export default function PartsPage() {
                 <div style={{
                   width: 80,
                   height: 80,
-                  backgroundColor: animal.illustration.color,
+                  backgroundColor: animalColors[key],
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -111,7 +155,10 @@ export default function PartsPage() {
                   fontWeight: 'bold',
                   boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
                 }}>
-                  {animal.name}
+                  {name}
+                </div>
+                <div style={{ fontSize: '12px', marginTop: '4px', color: colors.text }}>
+                  {currentStats ? `${currentStats.conquered_count}/${currentStats.total_count}` : ''}
                 </div>
               </div>
             ))}
@@ -119,69 +166,271 @@ export default function PartsPage() {
         </div>
 
         <div>
-          <h2 style={{ textAlign: 'center' }}>{animalData[selectedAnimal].name}の部位制覇状況</h2>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-            gap: 12 
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <h2 style={{ margin: 0 }}>{animalNames[selectedAnimal]}の部位制覇状況</h2>
+
+            {/* フィルタボタン */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { key: 'all', label: '全て' },
+                { key: 'conquered', label: '制覇済み' },
+                { key: 'unconquered', label: '未制覇' }
+              ].map(filter => (
+                <button
+                  key={filter.key}
+                  onClick={() => setViewFilter(filter.key)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 16,
+                    border: 'none',
+                    backgroundColor: viewFilter === filter.key ? colors.primary : '#f0f0f0',
+                    color: viewFilter === filter.key ? 'white' : colors.text,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* カテゴリ別表示 */}
+          <div style={{ marginBottom: '32px' }}>
+            <h3 style={{ marginBottom: '16px' }}>🥩 赤身系</h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: window.innerWidth <= 480 ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(150px, 1fr))',
+              gap: 12,
+              marginBottom: '24px'
+            }}>
+              {(() => {
+                const [conquered, unconquered] = filterParts(currentAnimalData.meat.conquered, currentAnimalData.meat.unconquered)
+                return [...conquered, ...unconquered]
+              })().map((part) => {
+                const isConquered = 'first_conquered_date' in part
+                return (
+                  <div
+                    key={`${selectedAnimal}-meat-${part.id}`}
+                    onClick={() => handlePartClick(part)}
+                    style={{
+                      padding: 16,
+                      backgroundColor: isConquered ? colors.conqueredBg : colors.unconqueredBg,
+                      border: `1px solid ${isConquered ? colors.conqueredBorder : colors.unconqueredBorder}`,
+                      borderRadius: 8,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                    }}
+                  >
+                    <strong style={{ color: colors.text }}>{part.part_name_jp}</strong>
+                    <div style={{ fontSize: '12px', marginTop: 4 }}>
+                      {isConquered ? '✅ 制覇済み' : '❌ 未制覇'}
+                    </div>
+                    <div style={{ fontSize: '10px', marginTop: 2, color: '#666' }}>
+                      難易度: {'★'.repeat(part.difficulty_level)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <h3 style={{ marginBottom: '16px' }}>🫀 内臓系</h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: window.innerWidth <= 480 ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(150px, 1fr))',
+              gap: 12
+            }}>
+              {(() => {
+                const [conquered, unconquered] = filterParts(currentAnimalData.organ.conquered, currentAnimalData.organ.unconquered)
+                return [...conquered, ...unconquered]
+              })().map((part) => {
+                const isConquered = 'first_conquered_date' in part
+                return (
+                  <div
+                    key={`${selectedAnimal}-organ-${part.id}`}
+                    onClick={() => handlePartClick(part)}
+                    style={{
+                      padding: 16,
+                      backgroundColor: isConquered ? colors.conqueredBg : colors.unconqueredBg,
+                      border: `1px solid ${isConquered ? colors.conqueredBorder : colors.unconqueredBorder}`,
+                      borderRadius: 8,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                    }}
+                  >
+                    <strong style={{ color: colors.text }}>{part.part_name_jp}</strong>
+                    <div style={{ fontSize: '12px', marginTop: 4 }}>
+                      {isConquered ? '✅ 制覇済み' : '❌ 未制覇'}
+                    </div>
+                    <div style={{ fontSize: '10px', marginTop: 2, color: '#666' }}>
+                      難易度: {'★'.repeat(part.difficulty_level)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 全体統計の可視化 */}
+        <div style={{ marginTop: 32, marginBottom: 32 }}>
+          <h3>全体の制覇状況</h3>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            marginBottom: 24
           }}>
-            {currentAnimalParts.map((part) => (
-              <div
-                key={selectedAnimal + '-' + part.name}
-                onClick={() => handlePartClick(part)}
-                style={{
-                  padding: 16,
-                  backgroundColor: part.isConquered ? colors.conqueredBg : colors.unconqueredBg,
-                  border: `1px solid ${part.isConquered ? colors.conqueredBorder : colors.unconqueredBorder}`,
-                  borderRadius: 8,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                }}
-              >
-                <strong style={{ color: colors.text }}>{part.name}</strong>
-                <div style={{ fontSize: '12px', marginTop: 4 }}>
-                  {part.isConquered ? '✅ 制覇済み' : '❌ 未制覇'}
-                </div>
+            {/* 全体制覇率 */}
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: colors.primary, marginBottom: 8 }}>
+                {progressData.overall_stats.overall_conquest_rate}%
               </div>
-            ))}
+              <div style={{ fontSize: '16px', color: colors.text }}>
+                全体制覇率 ({progressData.overall_stats.total_conquered}/{progressData.overall_stats.total_parts}部位)
+              </div>
+            </div>
+
+            {/* 動物別比較 */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: window.innerWidth <= 480 ? '1fr' : 'repeat(3, 1fr)',
+              gap: 16
+            }}>
+              {Object.entries(animalNames).map(([animalType, name]) => {
+                const stats = progressData.stats[animalType]
+                return (
+                  <div
+                    key={animalType}
+                    onClick={() => setSelectedAnimal(animalType)}
+                    style={{
+                      textAlign: 'center',
+                      padding: 16,
+                      backgroundColor: colors.base,
+                      borderRadius: 8,
+                      border: selectedAnimal === animalType ? `2px solid ${colors.primary}` : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => {
+                      if (selectedAnimal !== animalType) {
+                        e.currentTarget.style.backgroundColor = '#f8f8f8'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (selectedAnimal !== animalType) {
+                        e.currentTarget.style.backgroundColor = colors.base
+                      }
+                    }}
+                  >
+                    <div style={{
+                      width: 60,
+                      height: 60,
+                      backgroundColor: animalColors[animalType],
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      margin: '0 auto 8px'
+                    }}>
+                      {name}
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: colors.primary }}>
+                      {stats.conquest_rate}%
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {stats.conquered_count}/{stats.total_count}部位
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
 
         <div style={{ marginTop: 32 }}>
-          <h3>制覇率</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              flex: 1,
-              backgroundColor: colors.progressBarBg,
-              borderRadius: 8,
-              overflow: 'hidden',
-              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+          <h3>{animalNames[selectedAnimal]}の制覇率</h3>
+
+          {/* 全体の制覇率 */}
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '8px' }}>
               <div style={{
-                width: `${percentage}%`,
-                backgroundColor: colors.primary,
-                height: 24,
-                transition: 'width 0.5s ease-in-out',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontWeight: 'bold'
-              }} />
+                flex: 1,
+                backgroundColor: colors.progressBarBg,
+                borderRadius: 8,
+                overflow: 'hidden',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{
+                  width: `${currentStats.conquest_rate}%`,
+                  backgroundColor: colors.primary,
+                  height: 24,
+                  transition: 'width 0.5s ease-in-out',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold'
+                }} />
+              </div>
+              <span style={{ fontWeight: 'bold', fontSize: '1.2em', minWidth: 60, textAlign: 'right' }}>
+                {`${currentStats.conquest_rate}%`}
+              </span>
             </div>
-            <span style={{ fontWeight: 'bold', fontSize: '1.2em', minWidth: 50, textAlign: 'right' }}>
-              {`${percentage}%`}
-            </span>
+            <div style={{ fontSize: '14px', color: '#666', textAlign: 'center' }}>
+              {currentStats.conquered_count}部位 / {currentStats.total_count}部位制覇
+            </div>
+          </div>
+
+          {/* カテゴリ別制覇率 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: window.innerWidth <= 480 ? '1fr' : '1fr 1fr',
+            gap: 16
+          }}>
+            <div style={{ textAlign: 'center', padding: '16px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>🥩 赤身系</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: colors.primary }}>
+                {Math.round((currentAnimalData.meat.conquered.length / (currentAnimalData.meat.conquered.length + currentAnimalData.meat.unconquered.length) * 100) || 0)}%
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {currentAnimalData.meat.conquered.length}/{currentAnimalData.meat.conquered.length + currentAnimalData.meat.unconquered.length}部位
+              </div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '16px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>🫀 内臓系</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: colors.primary }}>
+                {Math.round((currentAnimalData.organ.conquered.length / (currentAnimalData.organ.conquered.length + currentAnimalData.organ.unconquered.length) * 100) || 0)}%
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {currentAnimalData.organ.conquered.length}/{currentAnimalData.organ.conquered.length + currentAnimalData.organ.unconquered.length}部位
+              </div>
+            </div>
           </div>
         </div>
 
@@ -209,31 +458,87 @@ export default function PartsPage() {
               boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
               textAlign: 'center'
             }}>
-              <img 
-                src={selectedPart.imageUrl} 
-                alt={`${selectedPart.name}のイラスト`} 
-                style={{ 
-                  width: '100%', 
-                  height: 'auto', 
-                  borderRadius: 8, 
-                  marginBottom: 16, 
-                  backgroundColor: '#f0f0f0' 
-                }} 
-              />
-              <h2 style={{ marginTop: 0, marginBottom: 16, color: colors.text }}>{selectedPart.name}</h2>
-              
-              <div style={{ borderTop: '1px solid #eee', paddingTop: 16, marginTop: 16, textAlign: 'left' }}>
-                <h3 style={{ marginTop: 0 }}>特徴</h3>
-                <p style={{ color: colors.text, lineHeight: 1.6 }}>
-                  {selectedPart.description}
-                </p>
+              <div style={{
+                width: '100%',
+                height: 200,
+                backgroundColor: '#f0f0f0',
+                borderRadius: 8,
+                marginBottom: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                color: '#999'
+              }}>
+                {selectedPart.part_name_jp}のイラスト
               </div>
 
-              <p style={{ textAlign: 'right', fontSize: '0.9em', color: '#555', marginTop: 16 }}>
-                <strong>制覇日:</strong> {selectedPart.isConquered ? selectedPart.conqueredDate : '未制覇'}
-              </p>
+              <h2 style={{ marginTop: 0, marginBottom: 16, color: colors.text }}>
+                {selectedPart.part_name_jp}
+              </h2>
 
-              <button 
+              {/* 制覇情報 */}
+              {'first_conquered_date' in selectedPart ? (
+                <div style={{
+                  backgroundColor: colors.conqueredBg,
+                  border: `1px solid ${colors.conqueredBorder}`,
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 16
+                }}>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: colors.primary, marginBottom: '8px' }}>
+                    ✅ 制覇済み
+                  </div>
+                  <div style={{ fontSize: '14px', color: colors.text }}>
+                    初回制覇: {new Date(selectedPart.first_conquered_date).toLocaleDateString()}
+                  </div>
+                  {selectedPart.eat_count > 1 && (
+                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                      食べた回数: {selectedPart.eat_count}回
+                    </div>
+                  )}
+                  {selectedPart.restaurants && (
+                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                      お店: {selectedPart.restaurants}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{
+                  backgroundColor: colors.unconqueredBg,
+                  border: `1px solid ${colors.unconqueredBorder}`,
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 16
+                }}>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: colors.primary }}>
+                    ❌ 未制覇
+                  </div>
+                </div>
+              )}
+
+              {/* 部位の詳細情報 */}
+              <div style={{ borderTop: '1px solid #eee', paddingTop: 16, marginTop: 16, textAlign: 'left' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <strong>カテゴリ:</strong> {selectedPart.part_category === 'meat' ? '赤身系' : '内臓系'}
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <strong>難易度:</strong> {'★'.repeat(selectedPart.difficulty_level)} ({selectedPart.difficulty_level}/5)
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <strong>英名:</strong> {selectedPart.part_name}
+                </div>
+                {selectedPart.description && (
+                  <div>
+                    <h3 style={{ marginTop: 0, marginBottom: '8px' }}>特徴</h3>
+                    <p style={{ color: colors.text, lineHeight: 1.6, margin: 0 }}>
+                      {selectedPart.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <button
                 onClick={closeModal}
                 style={{
                   padding: '12px 24px',

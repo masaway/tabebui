@@ -20,7 +20,7 @@ DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_USER = os.getenv("DB_USER", "app")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "app")
-DB_NAME = os.getenv("DB_NAME", "app")
+DB_NAME = os.getenv("DB_NAME", "tabebui")
 
 app = FastAPI(title="たべぶい API")
 
@@ -661,5 +661,311 @@ def get_eating_session_detail(session_id: int):
             conn.close()
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.get("/api/user-progress", response_model=dict)
+def get_user_progress(user_id: int = Query(1)):
+    """ユーザーの部位制覇状況を取得"""
+    try:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # 全部位情報を取得
+                all_parts_query = """
+                SELECT id, animal_type, part_category, part_name, part_name_jp, description, difficulty_level
+                FROM animal_parts
+                ORDER BY animal_type, part_category, difficulty_level, id
+                """
+                cur.execute(all_parts_query)
+                all_parts = cur.fetchall()
+
+                # ユーザーが制覇済みの部位を取得
+                conquered_query = """
+                SELECT
+                    ap.id,
+                    ap.animal_type,
+                    ap.part_category,
+                    ap.part_name,
+                    ap.part_name_jp,
+                    ap.description,
+                    ap.difficulty_level,
+                    MIN(er.eaten_at) as first_conquered_date,
+                    MAX(er.eaten_at) as last_eaten_date,
+                    COUNT(er.id) as eat_count
+                FROM animal_parts ap
+                JOIN eating_records er ON ap.id = er.animal_part_id
+                WHERE er.user_id = %s
+                GROUP BY ap.id, ap.animal_type, ap.part_category, ap.part_name, ap.part_name_jp, ap.description, ap.difficulty_level
+                ORDER BY ap.animal_type, ap.part_category, ap.difficulty_level, ap.id
+                """
+                cur.execute(conquered_query, (user_id,))
+                conquered_parts = cur.fetchall()
+
+                # 制覇済み部位のIDセットを作成
+                conquered_ids = {part['id'] for part in conquered_parts}
+
+                # 結果をマージして整理
+                progress_data = {}
+                for animal_type in ['beef', 'pork', 'chicken']:
+                    progress_data[animal_type] = {
+                        'meat': {'conquered': [], 'unconquered': []},
+                        'organ': {'conquered': [], 'unconquered': []}
+                    }
+
+                # 全部位を分類
+                for part in all_parts:
+                    animal_type = part['animal_type']
+                    part_category = part['part_category']
+
+                    if part['id'] in conquered_ids:
+                        # 制覇済み部位に制覇情報を追加
+                        conquered_part = next(cp for cp in conquered_parts if cp['id'] == part['id'])
+                        part_with_progress = {**part, **conquered_part}
+                        progress_data[animal_type][part_category]['conquered'].append(part_with_progress)
+                    else:
+                        progress_data[animal_type][part_category]['unconquered'].append(part)
+
+                # 統計情報を計算
+                stats = {}
+                for animal_type in ['beef', 'pork', 'chicken']:
+                    animal_parts = [p for p in all_parts if p['animal_type'] == animal_type]
+                    conquered_count = len([p for p in animal_parts if p['id'] in conquered_ids])
+                    total_count = len(animal_parts)
+
+                    stats[animal_type] = {
+                        'conquered_count': conquered_count,
+                        'total_count': total_count,
+                        'conquest_rate': round((conquered_count / total_count * 100), 1) if total_count > 0 else 0
+                    }
+
+                # 全体統計
+                total_parts = len(all_parts)
+                total_conquered = len(conquered_ids)
+                overall_stats = {
+                    'total_conquered': total_conquered,
+                    'total_parts': total_parts,
+                    'overall_conquest_rate': round((total_conquered / total_parts * 100), 1) if total_parts > 0 else 0
+                }
+
+                return {
+                    "success": True,
+                    "data": {
+                        "progress": progress_data,
+                        "stats": stats,
+                        "overall_stats": overall_stats,
+                        "user_id": user_id
+                    }
+                }
+
+        finally:
+            conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.get("/api/user-progress/{animal_type}", response_model=dict)
+def get_user_progress_by_animal(
+    animal_type: str = Path(..., regex="^(beef|pork|chicken)$"),
+    user_id: int = Query(1)
+):
+    """特定動物のユーザー制覇状況を詳細取得"""
+    try:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # 指定動物の全部位を取得
+                parts_query = """
+                SELECT id, animal_type, part_category, part_name, part_name_jp, description, difficulty_level
+                FROM animal_parts
+                WHERE animal_type = %s
+                ORDER BY part_category, difficulty_level, id
+                """
+                cur.execute(parts_query, (animal_type,))
+                all_parts = cur.fetchall()
+
+                # ユーザーの制覇済み部位を取得
+                conquered_query = """
+                SELECT
+                    ap.id,
+                    ap.animal_type,
+                    ap.part_category,
+                    ap.part_name,
+                    ap.part_name_jp,
+                    ap.description,
+                    ap.difficulty_level,
+                    MIN(er.eaten_at) as first_conquered_date,
+                    MAX(er.eaten_at) as last_eaten_date,
+                    COUNT(er.id) as eat_count,
+                    GROUP_CONCAT(DISTINCT es.restaurant_name) as restaurants
+                FROM animal_parts ap
+                JOIN eating_records er ON ap.id = er.animal_part_id
+                LEFT JOIN eating_sessions es ON er.session_id = es.id
+                WHERE er.user_id = %s AND ap.animal_type = %s
+                GROUP BY ap.id, ap.animal_type, ap.part_category, ap.part_name, ap.part_name_jp, ap.description, ap.difficulty_level
+                ORDER BY ap.part_category, ap.difficulty_level, ap.id
+                """
+                cur.execute(conquered_query, (user_id, animal_type))
+                conquered_parts = cur.fetchall()
+
+                # 制覇済み部位のIDセットを作成
+                conquered_ids = {part['id'] for part in conquered_parts}
+
+                # 結果をカテゴリ別に整理
+                result_data = {
+                    'meat': {'conquered': [], 'unconquered': []},
+                    'organ': {'conquered': [], 'unconquered': []}
+                }
+
+                for part in all_parts:
+                    part_category = part['part_category']
+
+                    if part['id'] in conquered_ids:
+                        conquered_part = next(cp for cp in conquered_parts if cp['id'] == part['id'])
+                        part_with_progress = {**part, **conquered_part}
+                        result_data[part_category]['conquered'].append(part_with_progress)
+                    else:
+                        result_data[part_category]['unconquered'].append(part)
+
+                # 統計計算
+                total_parts = len(all_parts)
+                conquered_count = len(conquered_ids)
+
+                # カテゴリ別統計
+                category_stats = {}
+                for category in ['meat', 'organ']:
+                    cat_parts = [p for p in all_parts if p['part_category'] == category]
+                    cat_conquered = len([p for p in cat_parts if p['id'] in conquered_ids])
+                    cat_total = len(cat_parts)
+
+                    category_stats[category] = {
+                        'conquered_count': cat_conquered,
+                        'total_count': cat_total,
+                        'conquest_rate': round((cat_conquered / cat_total * 100), 1) if cat_total > 0 else 0
+                    }
+
+                stats = {
+                    'animal_type': animal_type,
+                    'conquered_count': conquered_count,
+                    'total_count': total_parts,
+                    'conquest_rate': round((conquered_count / total_parts * 100), 1) if total_parts > 0 else 0,
+                    'category_stats': category_stats
+                }
+
+                return {
+                    "success": True,
+                    "data": {
+                        "parts": result_data,
+                        "stats": stats,
+                        "user_id": user_id,
+                        "animal_type": animal_type
+                    }
+                }
+
+        finally:
+            conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+@app.get("/api/dashboard-stats", response_model=dict)
+def get_dashboard_stats(user_id: int = Query(1)):
+    """ダッシュボード用の統計情報を取得"""
+    try:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # 全体の制覇状況を取得
+                all_parts_query = "SELECT COUNT(*) as total FROM animal_parts"
+                cur.execute(all_parts_query)
+                total_parts = cur.fetchone()['total']
+
+                conquered_parts_query = """
+                SELECT COUNT(DISTINCT animal_part_id) as conquered
+                FROM eating_records
+                WHERE user_id = %s
+                """
+                cur.execute(conquered_parts_query, (user_id,))
+                conquered_parts = cur.fetchone()['conquered']
+
+                # 動物別制覇状況
+                animal_stats = {}
+                for animal_type in ['beef', 'pork', 'chicken']:
+                    animal_total_query = "SELECT COUNT(*) as total FROM animal_parts WHERE animal_type = %s"
+                    cur.execute(animal_total_query, (animal_type,))
+                    animal_total = cur.fetchone()['total']
+
+                    animal_conquered_query = """
+                    SELECT COUNT(DISTINCT ap.id) as conquered
+                    FROM animal_parts ap
+                    JOIN eating_records er ON ap.id = er.animal_part_id
+                    WHERE er.user_id = %s AND ap.animal_type = %s
+                    """
+                    cur.execute(animal_conquered_query, (user_id, animal_type))
+                    animal_conquered = cur.fetchone()['conquered']
+
+                    animal_stats[animal_type] = {
+                        'conquered': animal_conquered,
+                        'total': animal_total,
+                        'rate': round((animal_conquered / animal_total * 100), 1) if animal_total > 0 else 0
+                    }
+
+                # 今週の記録数
+                week_records_query = """
+                SELECT COUNT(*) as count
+                FROM eating_records
+                WHERE user_id = %s AND eaten_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+                """
+                cur.execute(week_records_query, (user_id,))
+                week_records = cur.fetchone()['count']
+
+                # 連続記録日数（簡易版：過去7日間で記録がある日数）
+                streak_query = """
+                SELECT COUNT(DISTINCT DATE(eaten_at)) as streak_days
+                FROM eating_records
+                WHERE user_id = %s AND eaten_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                """
+                cur.execute(streak_query, (user_id,))
+                streak_days = cur.fetchone()['streak_days']
+
+                # 最近の記録を取得
+                recent_records_query = """
+                SELECT
+                    ap.part_name_jp,
+                    ap.animal_type,
+                    es.restaurant_name,
+                    er.eaten_at
+                FROM eating_records er
+                JOIN animal_parts ap ON er.animal_part_id = ap.id
+                LEFT JOIN eating_sessions es ON er.session_id = es.id
+                WHERE er.user_id = %s
+                ORDER BY er.eaten_at DESC
+                LIMIT 5
+                """
+                cur.execute(recent_records_query, (user_id,))
+                recent_records = cur.fetchall()
+
+                # 全体制覇率計算
+                overall_rate = round((conquered_parts / total_parts * 100), 1) if total_parts > 0 else 0
+
+                return {
+                    "success": True,
+                    "data": {
+                        "overall_stats": {
+                            "conquered_parts": conquered_parts,
+                            "total_parts": total_parts,
+                            "conquest_rate": overall_rate
+                        },
+                        "animal_stats": animal_stats,
+                        "activity_stats": {
+                            "week_records": week_records,
+                            "streak_days": streak_days
+                        },
+                        "recent_records": recent_records,
+                        "user_id": user_id
+                    }
+                }
+
+        finally:
+            conn.close()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

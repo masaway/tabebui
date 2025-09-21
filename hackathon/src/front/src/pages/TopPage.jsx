@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import PageLayout from '../components/PageLayout'
 
@@ -273,11 +273,105 @@ const styles = {
 }
 
 export default function TopPage() {
-  const [showTooltip, setShowTooltip] = React.useState(false)
-  const totalProgress = 34
-  const beefProgress = 45
-  const porkProgress = 28
-  const chickenProgress = 29
+  const [showTooltip, setShowTooltip] = useState(false)
+  const [dashboardData, setDashboardData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // APIからダッシュボード統計を取得
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/dashboard-stats?user_id=1')
+        const result = await response.json()
+
+        if (result.success) {
+          setDashboardData(result.data)
+        } else {
+          throw new Error('データの取得に失敗しました')
+        }
+      } catch (err) {
+        setError(err.message)
+        console.error('API Error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardStats()
+  }, [])
+
+  // 時間差を表示用に計算する関数
+  const getTimeAgo = (dateString) => {
+    const now = new Date()
+    const past = new Date(dateString)
+    const diffMs = now - past
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffDays > 0) {
+      return `${diffDays}日前`
+    } else if (diffHours > 0) {
+      return `${diffHours}時間前`
+    } else {
+      return '1時間以内'
+    }
+  }
+
+  // 動物タイプの絵文字を取得
+  const getAnimalEmoji = (animalType) => {
+    switch (animalType) {
+      case 'beef': return '🐄'
+      case 'pork': return '🐷'
+      case 'chicken': return '🐔'
+      default: return '🥩'
+    }
+  }
+
+  // ローディング中の表示
+  if (loading) {
+    return (
+      <PageLayout title="たべぶい">
+        <div style={styles.container}>
+          <section style={styles.welcomeSection}>
+            <h1 style={styles.welcomeTitle}>データを読み込み中...</h1>
+            <p style={styles.welcomeSubtitle}>しばらくお待ちください</p>
+          </section>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // エラー時の表示
+  if (error) {
+    return (
+      <PageLayout title="たべぶい">
+        <div style={styles.container}>
+          <section style={styles.welcomeSection}>
+            <h1 style={styles.welcomeTitle}>エラーが発生しました</h1>
+            <p style={styles.welcomeSubtitle}>{error}</p>
+          </section>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // データが読み込まれていない場合
+  if (!dashboardData) {
+    return (
+      <PageLayout title="たべぶい">
+        <div style={styles.container}>
+          <section style={styles.welcomeSection}>
+            <h1 style={styles.welcomeTitle}>データがありません</h1>
+            <p style={styles.welcomeSubtitle}>データを確認してください</p>
+          </section>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  const { overall_stats, animal_stats, activity_stats, recent_records } = dashboardData
 
   return (
     <PageLayout title="たべぶい">
@@ -292,19 +386,19 @@ export default function TopPage() {
         <section style={styles.statsRow}>
           <div style={styles.statsGrid}>
             <div style={styles.statItem}>
-              <div style={{ ...styles.statNumber, color: '#ff6b6b' }}>34%</div>
+              <div style={{ ...styles.statNumber, color: '#ff6b6b' }}>{overall_stats.conquest_rate}%</div>
               <p style={styles.statLabel}>総制覇率</p>
             </div>
             <div style={styles.statItem}>
-              <div style={{ ...styles.statNumber, color: '#4ecdc4' }}>127</div>
+              <div style={{ ...styles.statNumber, color: '#4ecdc4' }}>{overall_stats.conquered_parts}</div>
               <p style={styles.statLabel}>食べた部位</p>
             </div>
             <div style={styles.statItem}>
-              <div style={{ ...styles.statNumber, color: '#45b7d1' }}>12</div>
+              <div style={{ ...styles.statNumber, color: '#45b7d1' }}>{activity_stats.week_records}</div>
               <p style={styles.statLabel}>今週記録</p>
             </div>
             <div style={styles.statItem}>
-              <div style={{ ...styles.statNumber, color: '#96ceb4' }}>7</div>
+              <div style={{ ...styles.statNumber, color: '#96ceb4' }}>{activity_stats.streak_days}</div>
               <p style={styles.statLabel}>連続日</p>
             </div>
           </div>
@@ -318,27 +412,27 @@ export default function TopPage() {
           <div style={styles.progressCard}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '16px', fontWeight: 'bold' }}>総合進捗</span>
-              <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff6b6b' }}>{totalProgress}%</span>
+              <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff6b6b' }}>{overall_stats.conquest_rate}%</span>
             </div>
             <div style={styles.progressBar}>
-              <div style={{ ...styles.progressFill, width: `${totalProgress}%` }}></div>
+              <div style={{ ...styles.progressFill, width: `${overall_stats.conquest_rate}%` }}></div>
             </div>
-            
+
             <div style={styles.animalProgress}>
               <div style={styles.animalItem}>
                 <div style={styles.animalEmoji}>🐄</div>
                 <p style={styles.animalName}>牛</p>
-                <p style={styles.animalProgressText}>{beefProgress}%</p>
+                <p style={styles.animalProgressText}>{animal_stats.beef.rate}%</p>
               </div>
               <div style={styles.animalItem}>
                 <div style={styles.animalEmoji}>🐷</div>
                 <p style={styles.animalName}>豚</p>
-                <p style={styles.animalProgressText}>{porkProgress}%</p>
+                <p style={styles.animalProgressText}>{animal_stats.pork.rate}%</p>
               </div>
               <div style={styles.animalItem}>
                 <div style={styles.animalEmoji}>🐔</div>
                 <p style={styles.animalName}>鶏</p>
-                <p style={styles.animalProgressText}>{chickenProgress}%</p>
+                <p style={styles.animalProgressText}>{animal_stats.chicken.rate}%</p>
               </div>
             </div>
           </div>
@@ -371,27 +465,43 @@ export default function TopPage() {
             📝 最近の記録
           </h2>
           <div style={styles.recentList}>
-            <div style={styles.recentItem}>
-              <div style={styles.recentImage}>🥩</div>
-              <div style={styles.recentContent}>
-                <p style={styles.recentTitle}>サーロイン（牛）</p>
-                <p style={styles.recentMeta}>焼肉きんぐ新宿店 • 2時間前</p>
+            {recent_records.length > 0 ? (
+              recent_records.map((record, index) => {
+                const isLast = index === recent_records.length - 1
+                const animalName = record.animal_type === 'beef' ? '牛' :
+                                 record.animal_type === 'pork' ? '豚' : '鶏'
+
+                return (
+                  <div
+                    key={`${record.part_name_jp}-${record.eaten_at}`}
+                    style={{
+                      ...styles.recentItem,
+                      ...(isLast ? styles.recentItemLast : {})
+                    }}
+                  >
+                    <div style={styles.recentImage}>
+                      {getAnimalEmoji(record.animal_type)}
+                    </div>
+                    <div style={styles.recentContent}>
+                      <p style={styles.recentTitle}>
+                        {record.part_name_jp}（{animalName}）
+                      </p>
+                      <p style={styles.recentMeta}>
+                        {record.restaurant_name || '店舗名なし'} • {getTimeAgo(record.eaten_at)}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div style={styles.recentItem}>
+                <div style={styles.recentImage}>📝</div>
+                <div style={styles.recentContent}>
+                  <p style={styles.recentTitle}>まだ記録がありません</p>
+                  <p style={styles.recentMeta}>最初の部位を記録してみましょう！</p>
+                </div>
               </div>
-            </div>
-            <div style={styles.recentItem}>
-              <div style={styles.recentImage}>🍖</div>
-              <div style={styles.recentContent}>
-                <p style={styles.recentTitle}>バラ肉（豚）</p>
-                <p style={styles.recentMeta}>一人焼肉ライク渋谷店 • 1日前</p>
-              </div>
-            </div>
-            <div style={{ ...styles.recentItem, ...styles.recentItemLast }}>
-              <div style={styles.recentImage}>🍗</div>
-              <div style={styles.recentContent}>
-                <p style={styles.recentTitle}>もも肉（鶏）</p>
-                <p style={styles.recentMeta}>鳥貴族池袋店 • 3日前</p>
-              </div>
-            </div>
+            )}
           </div>
         </section>
       </div>
