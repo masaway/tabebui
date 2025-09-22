@@ -42,6 +42,7 @@ services:
       - "8000:8000"
     volumes:
       - ./server:/app
+      - ./.env:/app/.env:ro
 
   front:
     build: ./front
